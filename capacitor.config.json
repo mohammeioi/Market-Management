@@ -1,0 +1,12 @@
+{
+  "appId": "com.lovable.quickshoppos67",
+  "appName": "متجري",
+  "webDir": "dist",
+  "plugins": {
+    "Camera": {
+      "permissions": [
+        "camera"
+      ]
+    }
+  }
+}
