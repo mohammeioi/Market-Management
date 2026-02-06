@@ -3,14 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, Package, RefreshCw, Search, Loader2 } from "lucide-react";
+import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductDialog } from "./ProductDialog";
 import { Product } from "@/types/pos";
 import { formatCurrency } from "@/lib/currency";
 
 export function ProductManagement() {
-  const { products, deleteProduct, fetchProductsByCategory, loading, error, hasMore } = useSupabaseProductStore();
+  const { products, toggleProductAvailability, fetchProductsByCategory, loading, error, hasMore } = useSupabaseProductStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,10 +86,8 @@ export function ProductManagement() {
     }
   };
 
-  const handleDelete = (productId: string) => {
-    if (window.confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
-      deleteProduct(productId);
-    }
+  const handleToggleAvailability = (productId: string) => {
+    toggleProductAvailability(productId);
   };
 
   return (
@@ -148,7 +146,7 @@ export function ProductManagement() {
               filteredProducts.map((product) => (
                 <div
                   key={product.id}
-                  className="flex items-center gap-4 p-4 border rounded-lg bg-pos-surface hover:shadow-md transition-shadow"
+                  className={`flex items-center gap-4 p-4 border rounded-lg bg-pos-surface hover:shadow-md transition-shadow ${product.isAvailable === false ? 'opacity-60 border-red-300' : ''}`}
                 >
                   <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                     <img
@@ -185,11 +183,20 @@ export function ProductManagement() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDelete(product.id)}
-                      className="gap-1 text-destructive hover:text-destructive"
+                      onClick={() => handleToggleAvailability(product.id)}
+                      className={`gap-1 ${product.isAvailable !== false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
                     >
-                      <Trash2 size={14} />
-                      حذف
+                      {product.isAvailable !== false ? (
+                        <>
+                          <Eye size={14} />
+                          متوفر
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff size={14} />
+                          غير متوفر
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
