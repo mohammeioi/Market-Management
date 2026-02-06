@@ -19,7 +19,7 @@ interface ProductStore {
   fetchProducts: () => Promise<void>; // Deprecated
   searchProducts: (query: string) => Promise<void>;
   fetchProductsByCategory: (categoryId: string | null, page?: number) => Promise<void>;
-  fetchCategories: () => Promise<void>;
+  fetchCategories: (forceRefresh?: boolean) => Promise<void>;
 
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
@@ -49,9 +49,9 @@ export const useSupabaseProductStore = create<ProductStore>(
     error: null,
     hasMore: true,
 
-    fetchCategories: async () => {
-      // Cache categories too? Maybe longer duration or simple check
-      if (get().categories.length > 0) return;
+    fetchCategories: async (forceRefresh = false) => {
+      // Cache categories unless force refresh
+      if (!forceRefresh && get().categories.length > 0) return;
 
       try {
         const { data, error } = await supabase

@@ -8,7 +8,7 @@ import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { Product } from "@/types/pos";
 import { useToast } from "@/hooks/use-toast";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Upload, Plus } from "lucide-react";
 
 interface ProductDialogProps {
   open: boolean;
@@ -16,17 +16,8 @@ interface ProductDialogProps {
   product?: Product | null;
 }
 
-const categories = [
-  "مشروبات ساخنة",
-  "مشروبات باردة", 
-  "حلويات",
-  "وجبات خفيفة",
-  "أطباق رئيسية",
-  "سلطات"
-];
-
 export function ProductDialog({ open, onOpenChange, product }: ProductDialogProps) {
-  const { addProduct, updateProduct } = useSupabaseProductStore();
+  const { addProduct, updateProduct, categories, fetchCategories } = useSupabaseProductStore();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
@@ -36,7 +27,16 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     barcode: ""
   });
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch categories when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchCategories();
+    }
+  }, [open, fetchCategories]);
 
   useEffect(() => {
     if (product) {
@@ -47,6 +47,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         image: product.image,
         barcode: product.barcode || ""
       });
+      setIsAddingNewCategory(false);
+      setNewCategoryName("");
     } else {
       setFormData({
         name: "",
@@ -55,12 +57,14 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         image: "/placeholder.svg",
         barcode: ""
       });
+      setIsAddingNewCategory(false);
+      setNewCategoryName("");
     }
   }, [product, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.price || !formData.category) {
       toast({
         title: "خطأ",
@@ -118,7 +122,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         handleInputChange("image", imageData);
       };
       reader.readAsDataURL(file);
-      
+
       toast({
         title: "تم رفع الصورة",
         description: "تم رفع صورة المنتج بنجاح"
@@ -134,7 +138,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
             {product ? "تعديل المنتج" : "إضافة منتج جديد"}
           </DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name" className="text-right block">اسم المنتج</Label>
@@ -165,14 +169,75 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
           <div className="space-y-2">
             <Label htmlFor="category" className="text-right block">الفئة</Label>
-            <Input
-              id="category"
-              value={formData.category}
-              onChange={(e) => handleInputChange("category", e.target.value)}
-              placeholder="أدخل اسم الفئة"
-              className="text-right"
-              required
-            />
+            {!isAddingNewCategory ? (
+              <div className="flex gap-2">
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => {
+                    if (value === "__new__") {
+                      setIsAddingNewCategory(true);
+                      handleInputChange("category", "");
+                    } else {
+                      handleInputChange("category", value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="flex-1 text-right">
+                    <SelectValue placeholder="اختر الفئة" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.icon} {cat.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="__new__" className="text-primary font-medium">
+                      <Plus className="inline-block mr-2" size={14} />
+                      إضافة فئة جديدة
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  id="category"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="أدخل اسم الفئة الجديدة"
+                  className="text-right flex-1"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (newCategoryName.trim()) {
+                      handleInputChange("category", newCategoryName.trim());
+                    }
+                    setIsAddingNewCategory(false);
+                    setNewCategoryName("");
+                  }}
+                  className="px-3"
+                >
+                  حفظ
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setIsAddingNewCategory(false);
+                    setNewCategoryName("");
+                  }}
+                  className="px-3"
+                >
+                  إلغاء
+                </Button>
+              </div>
+            )}
+            {formData.category && !isAddingNewCategory && (
+              <p className="text-sm text-muted-foreground">الفئة المختارة: {formData.category}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -185,9 +250,9 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 placeholder="أدخل الباركود أو امسحه"
                 className="text-right flex-1"
               />
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => setShowBarcodeScanner(true)}
                 className="px-3"
               >
@@ -207,9 +272,9 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 placeholder="رابط الصورة"
                 className="text-right flex-1"
               />
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => fileInputRef.current?.click()}
                 className="px-3"
               >
@@ -234,7 +299,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
             </Button>
           </div>
         </form>
-        
+
         <BarcodeScanner
           isOpen={showBarcodeScanner}
           onScan={handleBarcodeScanned}
