@@ -3,21 +3,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductDialog } from "./ProductDialog";
 import { Product } from "@/types/pos";
 import { formatCurrency } from "@/lib/currency";
+import * as XLSX from "xlsx";
 
 export function ProductManagement() {
-  const { products, toggleProductAvailability, fetchProductsByCategory, loading, error, hasMore } = useSupabaseProductStore();
+  const { products, toggleProductAvailability, fetchProductsByCategory, addProductsBatch, loading, error, hasMore } = useSupabaseProductStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
 
   // Ref for infinite scroll sentinel
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  // Ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter products based on search query (client-side for management page)
   const filteredProducts = useMemo(() => {
@@ -90,17 +95,95 @@ export function ProductManagement() {
     toggleProductAvailability(productId);
   };
 
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+          // Map Excel columns to product fields (support both Arabic and English)
+          const products = jsonData.map((row: any) => ({
+            name: row['الاسم'] || row['name'] || row['Name'] || '',
+            price: parseFloat(row['السعر'] || row['price'] || row['Price'] || 0),
+            category: row['الفئة'] || row['category'] || row['Category'] || 'غير محدد',
+            image: row['الصورة'] || row['image'] || row['Image'] || '/placeholder.svg',
+            stock: parseInt(row['المخزون'] || row['stock'] || row['Stock'] || 0, 10),
+            barcode: row['الباركود'] || row['barcode'] || row['Barcode'] || undefined,
+          })).filter((p: any) => p.name && p.price > 0); // Filter out invalid products
+
+          if (products.length === 0) {
+            setImportResult({ success: 0, failed: 0 });
+            setImporting(false);
+            return;
+          }
+
+          const result = await addProductsBatch(products);
+          setImportResult(result);
+        } catch (err) {
+          console.error('Error processing file:', err);
+          setImportResult({ success: 0, failed: -1 }); // -1 indicates file reading error
+        } finally {
+          setImporting(false);
+        }
+      };
+
+      reader.readAsBinaryString(file);
+    } catch (err) {
+      console.error('Error reading file:', err);
+      setImporting(false);
+      setImportResult({ success: 0, failed: -1 });
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="space-y-6">
+      {/* Hidden file input for Excel/CSV import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileImport}
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+      />
+
       <div className="flex justify-between items-center">
         <div className="text-right">
           <h1 className="text-2xl font-bold text-foreground">إدارة المنتجات</h1>
           <p className="text-muted-foreground">إضافة وتعديل وحذف المنتجات</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleRefresh} variant="outline" className="gap-2" disabled={loading}>
+          <Button onClick={handleRefresh} variant="outline" className="gap-2" disabled={loading || importing}>
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
             تحديث
+          </Button>
+          <Button onClick={handleImportClick} variant="outline" className="gap-2" disabled={importing || loading}>
+            {importing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Upload size={16} />
+            )}
+            استيراد من ملف
           </Button>
           <Button onClick={handleAdd} className="gap-2">
             <Plus size={16} />
@@ -108,6 +191,26 @@ export function ProductManagement() {
           </Button>
         </div>
       </div>
+
+      {/* Import result notification */}
+      {importResult && (
+        <div className={`px-4 py-3 rounded-lg ${importResult.failed === -1 ? 'bg-destructive/10 border border-destructive/20 text-destructive' : importResult.success > 0 ? 'bg-green-500/10 border border-green-500/20 text-green-700' : 'bg-yellow-500/10 border border-yellow-500/20 text-yellow-700'}`}>
+          {importResult.failed === -1 ? (
+            <span>فشل في قراءة الملف. تأكد من أن الملف بصيغة Excel أو CSV صحيحة.</span>
+          ) : (
+            <span>
+              تم الاستيراد: {importResult.success} منتج بنجاح
+              {importResult.failed > 0 && ` | فشل: ${importResult.failed} منتج`}
+            </span>
+          )}
+          <button
+            onClick={() => setImportResult(null)}
+            className="mr-4 underline hover:no-underline"
+          >
+            إغلاق
+          </button>
+        </div>
+      )}
 
       {/* حقل البحث */}
       <div className="relative">
