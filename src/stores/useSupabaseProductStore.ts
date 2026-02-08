@@ -22,8 +22,10 @@ interface ProductStore {
   fetchCategories: (forceRefresh?: boolean) => Promise<void>;
 
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  addProductsBatch: (products: Array<Omit<Product, 'id'>>) => Promise<{ success: number; failed: number }>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  toggleProductAvailability: (id: string) => Promise<void>;
 
   // Cart actions
   addToCart: (product: Product) => void;
@@ -84,7 +86,7 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         let supabaseQuery = supabase
           .from('products')
-          .select('id, name, price, stock, image, barcode, categories(name)')
+          .select('id, name, price, stock, image, barcode, is_available, categories(name)' as any)
           .order('created_at', { ascending: false })
           .limit(20);
 
@@ -100,14 +102,15 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         if (error) throw error;
 
-        const formattedProducts: Product[] = data?.map(product => ({
+        const formattedProducts: Product[] = (data as any)?.map((product: any) => ({
           id: product.id,
           name: product.name,
           price: product.price,
           category: product.categories?.name || 'غير محدد',
           stock: product.stock,
           image: product.image || '/placeholder.svg',
-          barcode: product.barcode
+          barcode: product.barcode,
+          isAvailable: product.is_available !== false
         })) || [];
 
         set({ products: formattedProducts, loading: false });
@@ -140,7 +143,7 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         let query = supabase
           .from('products')
-          .select('id, name, price, stock, image, barcode, categories(name)')
+          .select('id, name, price, stock, image, barcode, is_available, categories(name)' as any)
           .order('created_at', { ascending: false })
           .range(from, to);
 
@@ -152,14 +155,15 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         if (error) throw error;
 
-        const formattedProducts: Product[] = data?.map(product => ({
+        const formattedProducts: Product[] = (data as any)?.map((product: any) => ({
           id: product.id,
           name: product.name,
           price: product.price,
           category: product.categories?.name || 'غير محدد',
           stock: product.stock,
           image: product.image || '/placeholder.svg',
-          barcode: product.barcode
+          barcode: product.barcode,
+          isAvailable: product.is_available !== false
         })) || [];
 
         // Update cache
@@ -245,6 +249,87 @@ export const useSupabaseProductStore = create<ProductStore>(
       }
     },
 
+    addProductsBatch: async (productsData) => {
+      set({ loading: true, error: null });
+      let success = 0;
+      let failed = 0;
+
+      try {
+        // First, collect all unique category names
+        const categoryNames = [...new Set(productsData.map(p => p.category || 'غير محدد'))];
+
+        // Get or create all categories
+        const categoryMap: Record<string, string> = {};
+
+        for (const categoryName of categoryNames) {
+          const { data: existingCategory } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('name', categoryName)
+            .single();
+
+          if (existingCategory) {
+            categoryMap[categoryName] = existingCategory.id;
+          } else {
+            const { data: newCategory, error: categoryError } = await supabase
+              .from('categories')
+              .insert({ name: categoryName })
+              .select('id')
+              .single();
+
+            if (!categoryError && newCategory) {
+              categoryMap[categoryName] = newCategory.id;
+            }
+          }
+        }
+
+        // Add products one by one to handle errors gracefully
+        for (const productData of productsData) {
+          try {
+            const categoryId = categoryMap[productData.category || 'غير محدد'];
+
+            if (!categoryId) {
+              failed++;
+              continue;
+            }
+
+            const { error } = await supabase
+              .from('products')
+              .insert({
+                name: productData.name,
+                price: productData.price,
+                category_id: categoryId,
+                stock: productData.stock || 0,
+                image: productData.image || '/placeholder.svg',
+                barcode: productData.barcode
+              });
+
+            if (error) {
+              console.error('Error adding product:', productData.name, error);
+              failed++;
+            } else {
+              success++;
+            }
+          } catch (err) {
+            console.error('Error adding product:', productData.name, err);
+            failed++;
+          }
+        }
+
+        // Invalidate cache since we added products
+        requestCache.clear();
+
+        // Refresh products list
+        await get().fetchProductsByCategory(null, 0);
+
+        set({ loading: false });
+        return { success, failed };
+      } catch (error) {
+        console.error('Error in batch product import:', error);
+        set({ error: 'فشل في استيراد المنتجات', loading: false });
+        return { success, failed };
+      }
+    },
     updateProduct: async (id, productData) => {
       set({ loading: true, error: null });
       try {
@@ -313,6 +398,37 @@ export const useSupabaseProductStore = create<ProductStore>(
       } catch (error) {
         console.error('Error deleting product:', error);
         set({ error: 'فشل في حذف المنتج', loading: false });
+      }
+    },
+
+    toggleProductAvailability: async (id) => {
+      set({ loading: true, error: null });
+      try {
+        // First, get the current availability status
+        const currentProduct = get().products.find(p => p.id === id);
+        const currentAvailability = currentProduct?.isAvailable !== false; // Default to true if undefined
+        const newAvailability = !currentAvailability;
+
+        const { error } = await supabase
+          .from('products')
+          .update({ is_available: newAvailability } as any)
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Invalidate cache
+        requestCache.clear();
+
+        // Update local state
+        set(state => ({
+          products: state.products.map(product =>
+            product.id === id ? { ...product, isAvailable: newAvailability } : product
+          ),
+          loading: false
+        }));
+      } catch (error) {
+        console.error('Error toggling product availability:', error);
+        set({ error: 'فشل في تغيير حالة توفر المنتج', loading: false });
       }
     },
 
