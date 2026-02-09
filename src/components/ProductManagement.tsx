@@ -113,15 +113,56 @@ export function ProductManagement() {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
+          // Debug: Log raw Excel data
+          console.log('📊 Raw Excel Data:', jsonData);
+          console.log('📊 First row keys:', jsonData.length > 0 ? Object.keys(jsonData[0] as object) : 'No data');
+
+          // Helper function to normalize Arabic text for comparison
+          const normalizeArabic = (text: string): string => {
+            return text
+              .normalize('NFKC') // Unicode normalization
+              .replace(/[\u064B-\u065F]/g, '') // Remove Arabic diacritics (tashkeel)
+              .replace(/\u0640/g, '') // Remove tatweel
+              .replace(/[أإآ]/g, 'ا') // Normalize alef variations
+              .replace(/ى/g, 'ي') // Normalize alef maqsura
+              .replace(/ة/g, 'ه') // Normalize taa marbuta
+              .trim();
+          };
+
+          // Helper function to find value by flexible key matching
+          const getValue = (row: any, keys: string[]): any => {
+            // First try exact match
+            for (const key of keys) {
+              if (row[key] !== undefined) return row[key];
+            }
+            // Then try normalized Arabic match
+            const rowKeys = Object.keys(row);
+            for (const targetKey of keys) {
+              const normalizedTarget = normalizeArabic(targetKey);
+              for (const rowKey of rowKeys) {
+                if (normalizeArabic(rowKey) === normalizedTarget) {
+                  return row[rowKey];
+                }
+              }
+            }
+            return undefined;
+          };
+
           // Map Excel columns to product fields (support both Arabic and English)
-          const products = jsonData.map((row: any) => ({
-            name: row['الاسم'] || row['name'] || row['Name'] || '',
-            price: parseFloat(row['السعر'] || row['price'] || row['Price'] || 0),
-            category: row['الفئة'] || row['category'] || row['Category'] || 'غير محدد',
-            image: row['الصورة'] || row['image'] || row['Image'] || '/placeholder.svg',
-            stock: parseInt(row['المخزون'] || row['stock'] || row['Stock'] || 0, 10),
-            barcode: row['الباركود'] || row['barcode'] || row['Barcode'] || undefined,
-          })).filter((p: any) => p.name && p.price > 0); // Filter out invalid products
+          const products = jsonData.map((row: any) => {
+            const product = {
+              name: getValue(row, ['الاسم', 'name', 'Name', 'اسم', 'اسم المنتج', 'Product Name']) || '',
+              price: parseFloat(getValue(row, ['السعر', 'price', 'Price', 'سعر']) || 0),
+              category: getValue(row, ['الفئة', 'category', 'Category', 'فئة', 'التصنيف']) || 'غير محدد',
+              image: getValue(row, ['الصورة', 'image', 'Image', 'صورة']) || '/placeholder.svg',
+              stock: parseInt(getValue(row, ['المخزون', 'stock', 'Stock', 'مخزون', 'الكمية']) || 0, 10),
+              barcode: getValue(row, ['الباركود', 'barcode', 'Barcode', 'باركود']) || undefined,
+            };
+            console.log('📦 Parsed product:', product);
+            return product;
+          }).filter((p: any) => p.name && p.price > 0); // Filter out invalid products
+
+          console.log('✅ Valid products to import:', products.length, products);
 
           if (products.length === 0) {
             setImportResult({ success: 0, failed: 0 });
