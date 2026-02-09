@@ -132,6 +132,8 @@ export type Database = {
           created_at: string
           id: string
           image: string | null
+          is_available: boolean
+          is_deleted: boolean
           name: string
           price: number
           stock: number
@@ -143,6 +145,8 @@ export type Database = {
           created_at?: string
           id?: string
           image?: string | null
+          is_available?: boolean
+          is_deleted?: boolean
           name: string
           price: number
           stock?: number
@@ -154,6 +158,8 @@ export type Database = {
           created_at?: string
           id?: string
           image?: string | null
+          is_available?: boolean
+          is_deleted?: boolean
           name?: string
           price?: number
           stock?: number
