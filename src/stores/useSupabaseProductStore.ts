@@ -86,7 +86,7 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         let supabaseQuery = supabase
           .from('products')
-          .select('id, name, price, stock, image, barcode, is_available, categories(name)' as any)
+          .select('id, name, price, stock, image, barcode, is_available, categories(name)')
           .order('created_at', { ascending: false })
           .limit(20);
 
@@ -143,12 +143,12 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         let query = supabase
           .from('products')
-          .select('id, name, price, stock, image, barcode, is_available, categories(name)' as any)
+          .select('id, name, price, stock, image, barcode, is_available, categories(name)')
           .order('created_at', { ascending: false })
           .range(from, to);
 
         if (categoryId) {
-          query = query.eq('category_id' as any, categoryId);
+          query = query.eq('category_id', categoryId);
         }
 
         const { data, error } = await query;
@@ -383,7 +383,7 @@ export const useSupabaseProductStore = create<ProductStore>(
       try {
         const { error } = await supabase
           .from('products')
-          .update({ is_deleted: true } as any)
+          .update({ is_deleted: true })
           .eq('id', id);
 
         if (error) throw error;
@@ -411,7 +411,7 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         const { error } = await supabase
           .from('products')
-          .update({ is_available: newAvailability } as any)
+          .update({ is_available: newAvailability })
           .eq('id', id);
 
         if (error) throw error;
