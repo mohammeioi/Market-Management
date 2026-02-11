@@ -381,12 +381,22 @@ export const useSupabaseProductStore = create<ProductStore>(
     deleteProduct: async (id) => {
       set({ loading: true, error: null });
       try {
-        const { error } = await supabase
+        // Try real DELETE first
+        const { error: deleteError } = await supabase
           .from('products')
-          .update({ is_deleted: true })
+          .delete()
           .eq('id', id);
 
-        if (error) throw error;
+        if (deleteError) {
+          console.warn('Real delete failed, trying soft delete:', deleteError.message);
+          // Fall back to soft delete if FK constraint prevents real delete
+          const { error: softDeleteError } = await supabase
+            .from('products')
+            .update({ is_deleted: true })
+            .eq('id', id);
+
+          if (softDeleteError) throw softDeleteError;
+        }
 
         // Invalidate cache
         requestCache.clear();
