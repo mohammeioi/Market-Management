@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload } from "lucide-react";
+import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2 } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductDialog } from "./ProductDialog";
 import { Product } from "@/types/pos";
@@ -11,7 +11,7 @@ import { formatCurrency } from "@/lib/currency";
 import * as XLSX from "xlsx";
 
 export function ProductManagement() {
-  const { products, toggleProductAvailability, fetchProductsByCategory, addProductsBatch, loading, error, hasMore } = useSupabaseProductStore();
+  const { products, toggleProductAvailability, fetchProductsByCategory, addProductsBatch, searchProducts, deleteProduct, loading, error, hasMore } = useSupabaseProductStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,16 +24,25 @@ export function ProductManagement() {
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter products based on search query (client-side for management page)
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return products;
+  // Debounced server-side search
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return; // handled by initial fetch / refresh
 
-    const query = searchQuery.trim().toLowerCase();
-    return products.filter(product =>
-      product.name.toLowerCase().includes(query) ||
-      product.category?.toLowerCase().includes(query)
-    );
-  }, [products, searchQuery]);
+    const timer = setTimeout(() => {
+      searchProducts(trimmed);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchProducts]);
+
+  // When search is cleared, go back to paginated view
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setPage(0);
+      fetchProductsByCategory(null, 0);
+    }
+  }, [searchQuery, fetchProductsByCategory]);
 
   // Load products when component mounts
   useEffect(() => {
@@ -46,7 +55,7 @@ export function ProductManagement() {
     const observer = new IntersectionObserver(
       (entries) => {
         const first = entries[0];
-        if (first.isIntersecting && hasMore && !loading && !searchQuery.trim()) {
+        if (first.isIntersecting && hasMore && !loading && searchQuery.trim() === '') {
           const nextPage = page + 1;
           setPage(nextPage);
           fetchProductsByCategory(null, nextPage);
@@ -94,6 +103,13 @@ export function ProductManagement() {
   const handleToggleAvailability = (productId: string) => {
     toggleProductAvailability(productId);
   };
+
+  const handleDelete = useCallback(async (product: Product) => {
+    const confirmed = window.confirm(`هل أنت متأكد من حذف المنتج "${product.name}"؟\nلا يمكن التراجع عن هذا الإجراء.`);
+    if (confirmed) {
+      await deleteProduct(product.id);
+    }
+  }, [deleteProduct]);
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -275,19 +291,19 @@ export function ProductManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-right">
             <Package size={20} />
-            قائمة المنتجات ({filteredProducts.length}{searchQuery && ` من ${products.length}`})
+            قائمة المنتجات ({products.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredProducts.length === 0 && !loading ? (
+            {products.length === 0 && !loading ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Package size={48} className="mx-auto mb-4 opacity-50" />
                 <p>لا توجد منتجات</p>
                 <p className="text-sm">ابدأ بإضافة منتجات جديدة</p>
               </div>
             ) : (
-              filteredProducts.map((product) => (
+              products.map((product) => (
                 <div
                   key={product.id}
                   className={`flex items-center gap-4 p-4 border rounded-lg bg-pos-surface hover:shadow-md transition-shadow ${product.isAvailable === false ? 'opacity-60 border-red-300' : ''}`}
@@ -341,6 +357,15 @@ export function ProductManagement() {
                           غير متوفر
                         </>
                       )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDelete(product)}
+                      className="gap-1"
+                    >
+                      <Trash2 size={14} />
+                      حذف
                     </Button>
                   </div>
                 </div>
