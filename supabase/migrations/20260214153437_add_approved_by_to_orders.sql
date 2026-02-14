@@ -1,0 +1,2 @@
+ALTER TABLE orders ADD COLUMN approved_by UUID REFERENCES auth.users(id);
+COMMENT ON COLUMN orders.approved_by IS 'The admin user who approved this order. NULL means not yet approved and visible to all admins.';
