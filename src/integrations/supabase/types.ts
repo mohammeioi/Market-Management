@@ -17,21 +17,18 @@ export type Database = {
       categories: {
         Row: {
           created_at: string
-          icon?: string | null
           id: string
           name: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          icon?: string | null
           id?: string
           name: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          icon?: string
           id?: string
           name?: string
           updated_at?: string
@@ -43,7 +40,7 @@ export type Database = {
           created_at: string
           id: string
           order_id: string
-          product_id: string
+          product_id: string | null
           quantity: number
           total_price: number
           unit_price: number
@@ -52,7 +49,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id: string
-          product_id: string
+          product_id?: string | null
           quantity: number
           total_price: number
           unit_price: number
@@ -61,7 +58,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_id?: string
-          product_id?: string
+          product_id?: string | null
           quantity?: number
           total_price?: number
           unit_price?: number
@@ -90,12 +87,14 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           id: string
+          image: string | null
           notes: string | null
           order_date: string
           status: string
           total_amount: number
           updated_at: string
           user_id: string | null
+          approved_by: string | null
         }
         Insert: {
           created_at?: string
@@ -103,12 +102,14 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           id?: string
+          image?: string | null
           notes?: string | null
           order_date?: string
           status?: string
           total_amount: number
           updated_at?: string
           user_id?: string | null
+          approved_by?: string | null
         }
         Update: {
           created_at?: string
@@ -116,12 +117,14 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           id?: string
+          image?: string | null
           notes?: string | null
           order_date?: string
           status?: string
           total_amount?: number
           updated_at?: string
           user_id?: string | null
+          approved_by?: string | null
         }
         Relationships: []
       }
@@ -130,10 +133,10 @@ export type Database = {
           barcode: string | null
           category_id: string | null
           created_at: string
+          description: string | null
           id: string
           image: string | null
-          is_available: boolean
-          is_deleted: boolean
+          is_available: boolean | null
           name: string
           price: number
           stock: number
@@ -143,10 +146,10 @@ export type Database = {
           barcode?: string | null
           category_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           image?: string | null
-          is_available?: boolean
-          is_deleted?: boolean
+          is_available?: boolean | null
           name: string
           price: number
           stock?: number
@@ -156,10 +159,10 @@ export type Database = {
           barcode?: string | null
           category_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           image?: string | null
-          is_available?: boolean
-          is_deleted?: boolean
+          is_available?: boolean | null
           name?: string
           price?: number
           stock?: number
@@ -184,6 +187,7 @@ export type Database = {
           role: string | null
           updated_at: string
           user_id: string
+          pin_code: string | null
         }
         Insert: {
           created_at?: string
@@ -193,22 +197,25 @@ export type Database = {
           role?: string | null
           updated_at?: string
           user_id: string
+          pin_code?: string | null
+          is_clocked_in?: boolean
         }
         Update: {
-          created_at?: string
           email?: string
           full_name?: string | null
           id?: string
           role?: string | null
           updated_at?: string
           user_id?: string
+          is_clocked_in?: boolean
+          pin_code?: string | null
         }
         Relationships: []
       }
       sale_items: {
         Row: {
           id: string
-          product_id: string
+          product_id: string | null
           quantity: number
           sale_id: string
           total_price: number
@@ -216,7 +223,7 @@ export type Database = {
         }
         Insert: {
           id?: string
-          product_id: string
+          product_id?: string | null
           quantity: number
           sale_id: string
           total_price: number
@@ -224,7 +231,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          product_id?: string
+          product_id?: string | null
           quantity?: number
           sale_id?: string
           total_price?: number
@@ -277,19 +284,37 @@ export type Database = {
         }
         Relationships: []
       }
+      user_fcm_tokens: {
+        Row: {
+          device_name: string | null
+          id: string
+          last_updated: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          device_name?: string | null
+          id?: string
+          last_updated?: string | null
+          token: string
+          user_id: string
+        }
+        Update: {
+          device_name?: string | null
+          id?: string
+          last_updated?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      ai_barcode_detection: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      ai_barcode_detection: { Args: never; Returns: string }
+      get_current_user_role: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

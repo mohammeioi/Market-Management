@@ -2,12 +2,43 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2, ArrowRight } from "lucide-react";
+import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2, ArrowRight, Bell, Copy } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductDialog } from "./ProductDialog";
 import { Product } from "@/types/pos";
 import { formatCurrency } from "@/lib/currency";
 import * as XLSX from "xlsx";
+import { useNotificationStore } from "@/stores/useNotificationStore";
+import { toast } from "sonner";
+
+function NotificationTokenDisplay() {
+  const { pushToken } = useNotificationStore();
+
+  if (!pushToken) return null;
+
+  const copyToken = () => {
+    navigator.clipboard.writeText(pushToken);
+    toast.success("تم نسخ رمز الإشعارات");
+  };
+
+  return (
+    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3 overflow-hidden">
+        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+          <Bell size={20} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-blue-900">جاهز لاستقبال الإشعارات</p>
+          <p className="text-xs text-blue-500 truncate" dir="ltr">{pushToken}</p>
+        </div>
+      </div>
+      <Button variant="outline" size="sm" onClick={copyToken} className="shrink-0 gap-2 bg-white hover:bg-blue-50 text-blue-700 border-blue-200">
+        <Copy size={16} />
+        <span>نسخ الرمز</span>
+      </Button>
+    </div>
+  );
+}
 
 export function ProductManagement() {
   const { products, toggleProductAvailability, fetchProductsByCategory, addProductsBatch, searchProducts, deleteProduct, loading, error, hasMore } = useSupabaseProductStore();
@@ -223,7 +254,7 @@ export function ProductManagement() {
         className="hidden"
       />
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
         <div className="text-right">
           <div className="flex items-center gap-3 mb-1">
             <button
@@ -253,6 +284,11 @@ export function ProductManagement() {
           </Button>
         </div>
       </div>
+
+      {/* Token Display for Testing */}
+      <NotificationTokenDisplay />
+
+      <div className="mb-8"></div>
 
       {/* Import result notification */}
       {importResult && (

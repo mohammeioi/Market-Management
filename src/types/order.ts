@@ -8,6 +8,7 @@ export interface Order {
   notes?: string;
   order_date: string;
   user_id?: string;
+  approved_by?: string;
   created_at: string;
   updated_at: string;
 }

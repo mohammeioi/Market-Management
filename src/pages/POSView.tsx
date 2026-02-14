@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, Menu, Home, ShoppingBag, Settings, LogOut, Wifi, WifiOff } from "lucide-react";
+import { Search, Loader2, Menu, Home, ShoppingBag, Settings, LogOut, Wifi, WifiOff, Lock } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductCard } from "@/components/ProductCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
-import { Navigation } from "@/components/Navigation";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAttendanceStore } from "@/stores/useAttendanceStore";
 
 // Debounce helper
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number) {
@@ -41,6 +41,7 @@ function useOnlineStatus() {
 
 export function POSView() {
   const { products, categories, fetchCategories, fetchProductsByCategory, searchProducts, loading, hasMore } = useSupabaseProductStore();
+  const { profiles, loading: attendanceLoading, fetchProfiles, checkStatus, isClockedIn } = useAttendanceStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -49,6 +50,11 @@ export function POSView() {
 
   // Ref for infinite scroll sentinel
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    checkStatus();
+    fetchProfiles();
+  }, [checkStatus, fetchProfiles]);
 
   useEffect(() => {
     fetchCategories();
@@ -110,7 +116,6 @@ export function POSView() {
 
   return (
     <>
-
       {/* Header Section */}
       <div className="pt-12 px-6 pb-6">
         <div className="flex justify-between items-start mb-8">
@@ -127,14 +132,82 @@ export function POSView() {
                 <Menu size={28} strokeWidth={2.5} />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px] sm:w-[540px] z-[100]">
+            <SheetContent side="right" className="w-[300px] sm:w-[540px] z-[100] overflow-y-auto">
               <SheetHeader className="text-right mb-8">
                 <SheetTitle className="text-2xl font-bold">القائمة</SheetTitle>
               </SheetHeader>
-              <div className="flex flex-col gap-4 text-right">
-                {/* Status Indicator inside Menu */}
+
+              <div className="flex flex-col gap-6 text-right">
+
+                {/* Staff List Section (Primary) */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-700 mb-3 flex items-center justify-end gap-2">
+                    المتواجدون الآن
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  </h3>
+                  <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
+                    {attendanceLoading ? (
+                      <div className="flex justify-center p-4">
+                        <Loader2 className="animate-spin text-gray-400" />
+                      </div>
+                    ) : profiles.length === 0 ? (
+                      <p className="text-gray-400 text-sm py-2">لا يوجد موظفين</p>
+                    ) : (
+                      profiles.map((profile) => (
+                        <div key={profile.id} className="flex items-center justify-end gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                          <div className="text-right">
+                            <p className="font-bold text-sm text-gray-900 leading-tight">{profile.full_name || 'مستخدم'}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{profile.role || 'موظف'}</p>
+                          </div>
+                          <div className={cn(
+                            "w-3 h-3 rounded-full border-2 border-white shadow-sm ring-2 ring-gray-100",
+                            profile.is_clocked_in ? "bg-green-500" : "bg-gray-300"
+                          )} />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="h-px bg-gray-100 my-2"></div>
+
+                {/* Navigation Links (Secondary) */}
+                <div className="flex flex-col gap-2">
+                  <SheetClose asChild>
+                    <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/')}>
+                      <span>الرئيسية (المنتجات)</span> <Home size={20} />
+                    </Button>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "justify-end gap-3 text-lg h-12",
+                        !isClockedIn && "opacity-50"
+                      )}
+                      onClick={() => navigate('/orders')}
+                    >
+                      <span className="flex items-center gap-2">
+                        {!isClockedIn && <Lock size={14} className="text-gray-400" />}
+                        طلباتي
+                      </span>
+                      <ShoppingBag size={20} />
+                    </Button>
+                  </SheetClose>
+
+                  <SheetClose asChild>
+                    <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/management')}>
+                      <span>الإعدادات</span> <Settings size={20} />
+                    </Button>
+                  </SheetClose>
+                </div>
+
+                <div className="h-px bg-gray-100 my-2"></div>
+
+                {/* Status Indicator */}
                 <div className={cn(
-                  "flex items-center justify-end gap-2 px-4 py-3 rounded-xl mb-4 transition-colors",
+                  "flex items-center justify-end gap-2 px-4 py-3 rounded-xl transition-colors",
                   isOnline ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
                 )}>
                   <span className="font-bold text-sm">
@@ -143,22 +216,6 @@ export function POSView() {
                   {isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
                 </div>
 
-                <SheetClose asChild>
-                  <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/')}>
-                    <span>الرئيسية</span> <Home size={20} />
-                  </Button>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/orders')}>
-                    <span>طلباتي</span> <ShoppingBag size={20} />
-                  </Button>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/management')}>
-                    <span>الإعدادات</span> <Settings size={20} />
-                  </Button>
-                </SheetClose>
-                <div className="h-px bg-gray-100 my-2"></div>
                 <SheetClose asChild>
                   <Button variant="ghost" className="justify-end gap-3 text-lg h-12 text-red-500 hover:text-red-600 hover:bg-red-50">
                     <span>تسجيل الخروج</span> <LogOut size={20} />
@@ -221,7 +278,6 @@ export function POSView() {
           )}
         </div>
       </div>
-
     </>
   );
 }

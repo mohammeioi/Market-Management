@@ -12,6 +12,7 @@ interface OrderStore {
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
   createOrderFromCart: (cart: CartItem[], customerInfo: { name: string; phone?: string; email?: string; notes?: string }) => Promise<{ success: boolean; orderId?: string; error?: string }>;
+  approveOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
   subscribeToOrders: () => () => void;
 }
 
@@ -23,7 +24,9 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   fetchOrders: async () => {
     set({ loading: true, error: null });
     try {
-      const { data: orders, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+
+      let query = supabase
         .from('orders')
         .select(`
           *,
@@ -39,12 +42,45 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         `)
         .order('created_at', { ascending: false });
 
+      // If user is logged in, show only (unapproved orders) OR (orders approved by this user)
+      if (user) {
+        query = query.or(`approved_by.is.null,approved_by.eq.${user.id}`);
+      }
+
+      const { data: orders, error } = await query;
+
       if (error) throw error;
 
       set({ orders: (orders || []) as OrderWithItems[], loading: false });
     } catch (error) {
       console.error('Error fetching orders:', error);
       set({ error: 'حدث خطأ في جلب الطلبات', loading: false });
+    }
+  },
+
+  approveOrder: async (orderId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('orders')
+        .update({ approved_by: user.id })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Update local state - actually we might want to just re-fetch or update local
+      set(state => ({
+        orders: state.orders.map(order =>
+          order.id === orderId ? { ...order, approved_by: user.id } : order
+        )
+      }));
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error approving order:', error);
+      return { success: false, error: 'حدث خطأ في الموافقة على الطلب' };
     }
   },
 
@@ -82,6 +118,23 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // Send push notification to admins
+      try {
+        await supabase.functions.invoke('push-notification', {
+          body: {
+            record: {
+              id: order.id,
+              customer_name: order.customer_name,
+              total_amount: order.total_amount,
+            },
+          },
+        });
+        console.log('Push notification sent successfully');
+      } catch (notifError) {
+        console.error('Failed to send push notification:', notifError);
+        // Don't fail the order creation if notification fails
+      }
 
       // Refresh orders
       get().fetchOrders();

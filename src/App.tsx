@@ -45,16 +45,25 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+import { useEffect } from "react";
+import { NotificationService } from "./services/NotificationService";
+
+const App = () => {
+  useEffect(() => {
+    NotificationService.init();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

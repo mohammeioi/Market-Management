@@ -36,6 +36,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Save push token if available
+        if (session?.user) {
+          import('@/services/NotificationService').then(({ NotificationService }) => {
+            NotificationService.saveTokenToDb();
+          });
+        }
       }
     );
 
@@ -44,13 +51,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       try {
         setLoading(true);
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error('Error getting session:', error);
         } else {
           console.log('Initial session check:', session ? 'User authenticated' : 'No user');
         }
-        
+
         setSession(session);
         setUser(session?.user ?? null);
       } catch (error) {
