@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -80,6 +80,9 @@ export function OrderManagement() {
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
 
+  // Pre-loaded notification sound ref
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+
   // Create PIN State
   const [createPinDialogOpen, setCreatePinDialogOpen] = useState(false);
   const [newPin, setNewPin] = useState('');
@@ -94,6 +97,21 @@ export function OrderManagement() {
     // Request browser notification permission on web
     if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'default') {
       await Notification.requestPermission();
+    }
+
+    // Pre-load and unlock notification sound (user gesture required)
+    try {
+      const audio = new Audio('/notification_sound.mp3');
+      audio.volume = 1;
+      // Play silently to unlock autoplay
+      audio.muted = true;
+      await audio.play();
+      audio.pause();
+      audio.muted = false;
+      audio.currentTime = 0;
+      notificationAudioRef.current = audio;
+    } catch (e) {
+      console.warn('Audio pre-load failed:', e);
     }
 
     const result = await clockIn();
@@ -273,10 +291,12 @@ export function OrderManagement() {
               duration: 4000,
             });
 
-            // Play notification sound
+            // Play notification sound (pre-loaded)
             try {
-              const audio = new Audio('/notification_sound.mp3');
-              audio.play().catch(err => console.warn('Could not play sound:', err));
+              if (notificationAudioRef.current) {
+                notificationAudioRef.current.currentTime = 0;
+                notificationAudioRef.current.play().catch(err => console.warn('Could not play sound:', err));
+              }
             } catch (e) {
               console.warn('Audio playback error:', e);
             }
