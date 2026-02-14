@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import { Orders } from "./pages/Orders";
 import { Management } from "./pages/Management";
 import NotFound from "./pages/NotFound";
+import { MainLayout } from "@/components/MainLayout";
 
 const queryClient = new QueryClient();
 
@@ -27,17 +28,19 @@ const AppContent = () => {
   }
 
   if (!user) {
-    return <AuthPage onAuth={() => {}} />;
+    return <AuthPage onAuth={() => { }} />;
   }
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/management" element={<Management />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <MainLayout>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/management" element={<Management />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </MainLayout>
     </BrowserRouter>
   );
 };

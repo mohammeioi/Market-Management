@@ -1,11 +1,14 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Menu, Home, ShoppingBag, Settings, LogOut, Wifi, WifiOff } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductCard } from "@/components/ProductCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
-import { BarcodeLookup } from "@/components/BarcodeLookup";
+import { Navigation } from "@/components/Navigation";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 // Debounce helper
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number) {
@@ -16,23 +19,42 @@ function debounce<T extends (...args: any[]) => any>(func: T, wait: number) {
   };
 }
 
+// Hook for online status
+function useOnlineStatus() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  return isOnline;
+}
+
 export function POSView() {
   const { products, categories, fetchCategories, fetchProductsByCategory, searchProducts, loading, hasMore } = useSupabaseProductStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const navigate = useNavigate();
+  const isOnline = useOnlineStatus();
 
   // Ref for infinite scroll sentinel
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Load products and categories on mount
   useEffect(() => {
     fetchCategories();
     fetchProductsByCategory(null, 0);
   }, [fetchCategories, fetchProductsByCategory]);
 
-  // Infinite scroll using Intersection Observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -63,7 +85,7 @@ export function POSView() {
       debounce((query: string) => {
         if (query.trim()) {
           searchProducts(query);
-          setSelectedCategory(null); // Reset category when searching
+          setSelectedCategory(null);
           setPage(0);
         } else {
           fetchProductsByCategory(selectedCategory, 0);
@@ -81,97 +103,91 @@ export function POSView() {
 
   const handleCategorySelect = (categoryId: string | null) => {
     setSelectedCategory(categoryId);
-    setSearchTerm(""); // Clear search when selecting category
+    setSearchTerm("");
     setPage(0);
     fetchProductsByCategory(categoryId, 0);
   };
 
   return (
-    <div className="min-h-screen bg-background p-2 sm:p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Mobile Layout */}
-        <div className="block lg:hidden space-y-4">
-          {/* Header */}
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">نظام نقاط البيع</h1>
-            <p className="text-sm text-muted-foreground">اختر المنتجات لإضافتها</p>
+    <>
+
+      {/* Header Section */}
+      <div className="pt-12 px-6 pb-6">
+        <div className="flex justify-between items-start mb-8">
+          {/* Greeting */}
+          <div>
+            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-2">مرحباً 👋</h1>
+            <p className="text-gray-400 text-lg font-medium">اختر منتجاتك المفضلة</p>
           </div>
 
-          {/* Search and Barcode */}
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-              <Input
-                placeholder="البحث عن المنتجات..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="pr-10 text-right"
-              />
-            </div>
-            <BarcodeLookup />
-          </div>
+          {/* Menu Button (Sheet Trigger) */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="p-3 text-gray-900 hover:bg-gray-100 rounded-full transition-colors relative z-10 border border-transparent hover:border-gray-200">
+                <Menu size={28} strokeWidth={2.5} />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[540px] z-[100]">
+              <SheetHeader className="text-right mb-8">
+                <SheetTitle className="text-2xl font-bold">القائمة</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-4 text-right">
+                {/* Status Indicator inside Menu */}
+                <div className={cn(
+                  "flex items-center justify-end gap-2 px-4 py-3 rounded-xl mb-4 transition-colors",
+                  isOnline ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                )}>
+                  <span className="font-bold text-sm">
+                    {isOnline ? "أنت متصل بالإنترنت" : "أنت غير متصل"}
+                  </span>
+                  {isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
+                </div>
 
-          {/* Category Filter */}
-          {categories.length > 0 && (
-            <CategoryFilter
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategorySelect={handleCategorySelect}
-            />
-          )}
-
-          {/* Products Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-
-          {/* Infinite scroll sentinel */}
-          <div ref={loadMoreRef} className="h-4" />
-
-          {loading && (
-            <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-primary" size={32} />
-            </div>
-          )}
-
-          {!loading && products.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-base">لا توجد منتجات</p>
-              <p className="text-xs mt-1">جرب البحث بكلمات أخرى أو اختر فئة مختلفة</p>
-            </div>
-          )}
-
+                <SheetClose asChild>
+                  <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/')}>
+                    <span>الرئيسية</span> <Home size={20} />
+                  </Button>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/orders')}>
+                    <span>طلباتي</span> <ShoppingBag size={20} />
+                  </Button>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button variant="ghost" className="justify-end gap-3 text-lg h-12" onClick={() => navigate('/management')}>
+                    <span>الإعدادات</span> <Settings size={20} />
+                  </Button>
+                </SheetClose>
+                <div className="h-px bg-gray-100 my-2"></div>
+                <SheetClose asChild>
+                  <Button variant="ghost" className="justify-end gap-3 text-lg h-12 text-red-500 hover:text-red-600 hover:bg-red-50">
+                    <span>تسجيل الخروج</span> <LogOut size={20} />
+                  </Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
-        {/* Desktop Layout */}
-        <div className="hidden lg:block space-y-6">
-          {/* Header */}
-          <div className="text-right">
-            <h1 className="text-3xl font-bold text-foreground mb-2">نظام نقاط البيع</h1>
-            <p className="text-muted-foreground">اختر المنتجات لإضافتها</p>
+        {/* Search Bar */}
+        <div className="relative mb-8">
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+            <Search size={22} />
           </div>
+          <Input
+            type="text"
+            placeholder="ابحث عن منتج..."
+            className="w-full h-14 pr-12 pl-4 text-right text-lg bg-white border-0 shadow-sm rounded-2xl ring-1 ring-gray-100 focus-visible:ring-2 focus-visible:ring-gray-900 transition-shadow"
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
+        </div>
 
-          {/* Search and Barcode Lookup */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-                <Input
-                  placeholder="البحث عن المنتجات..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="pr-10 text-right"
-                />
-              </div>
-            </div>
-            <div className="col-span-1">
-              <BarcodeLookup />
-            </div>
+        {/* Categories (Icon Boxes) */}
+        <div className="mb-10">
+          <div className="flex justify-between items-end mb-5 px-1">
+            <h2 className="font-bold text-xl text-gray-900">الأقسام</h2>
           </div>
-
-          {/* Category Filter */}
           {categories.length > 0 && (
             <CategoryFilter
               categories={categories}
@@ -179,31 +195,33 @@ export function POSView() {
               onCategorySelect={handleCategorySelect}
             />
           )}
+        </div>
 
-          {/* Products Grid */}
-          <div className="grid grid-cols-4 gap-4">
+        {/* Products Grid (High Contrast) */}
+        <div>
+          <div className="flex justify-between items-end mb-5 px-1">
+            <h2 className="font-bold text-xl text-gray-900">المنتجات</h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
 
-          {/* Infinite scroll sentinel */}
-          <div ref={loadMoreRef} className="h-4" />
-
-          {loading && (
-            <div className="flex justify-center py-12">
-              <Loader2 className="animate-spin text-primary" size={48} />
-            </div>
-          )}
+          {/* Loaders */}
+          <div ref={loadMoreRef} className="h-4 w-full flex justify-center mt-10">
+            {loading && <Loader2 className="animate-spin text-gray-900" size={32} />}
+          </div>
 
           {!loading && products.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <p className="text-lg">لا توجد منتجات</p>
-              <p className="text-sm">جرب البحث بكلمات أخرى أو اختر فئة مختلفة</p>
+            <div className="text-center py-24 opacity-30">
+              <p className="text-xl font-medium">لا توجد منتجات</p>
             </div>
           )}
         </div>
       </div>
-    </div>
+
+    </>
   );
 }

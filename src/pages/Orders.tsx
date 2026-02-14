@@ -7,7 +7,7 @@ export function Orders() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background p-6" dir="rtl">
+    <div className="p-6" dir="rtl">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <Button

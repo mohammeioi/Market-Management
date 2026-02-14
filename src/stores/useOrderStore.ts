@@ -12,6 +12,7 @@ interface OrderStore {
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<{ success: boolean; error?: string }>;
   createOrderFromCart: (cart: CartItem[], customerInfo: { name: string; phone?: string; email?: string; notes?: string }) => Promise<{ success: boolean; orderId?: string; error?: string }>;
+  subscribeToOrders: () => () => void;
 }
 
 export const useOrderStore = create<OrderStore>((set, get) => ({
@@ -153,9 +154,24 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         product_id: item.product.id,
         quantity: item.quantity,
         unit_price: item.product.price,
+        order_id: '', // Placeholder, will be generated
       })),
     };
 
     return get().createOrder(orderData);
+  },
+
+  subscribeToOrders: () => {
+    const subscription = supabase
+      .channel('public:orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        console.log('Realtime update:', payload);
+        get().fetchOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   },
 }));

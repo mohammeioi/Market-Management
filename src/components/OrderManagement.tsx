@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { Order } from '@/types/order';
-import { Clock, Phone, Mail, Package, User, Trash2, RefreshCw, Timer, MessageCircle } from 'lucide-react';
+import { Clock, Phone, Mail, Package, User, Trash2, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 const statusColors = {
   pending: 'bg-yellow-500',
@@ -32,46 +34,36 @@ export function OrderManagement() {
   const { orders, loading, fetchOrders, updateOrderStatus, deleteOrder } = useOrderStore();
   const { toast } = useToast();
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [timeUntilRefresh, setTimeUntilRefresh] = useState(150); // 2.5 minutes in seconds
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchOrders();
 
-    // Auto-refresh functionality
-    if (autoRefreshEnabled) {
-      intervalRef.current = setInterval(() => {
-        fetchOrders();
-        setTimeUntilRefresh(150); // Reset countdown
-        toast({
-          title: "تم تحديث الطلبات",
-          description: "تم تحديث قائمة الطلبات تلقائياً",
-          duration: 2000,
-        });
-      }, 150000); // 2.5 minutes
-
-      // Countdown timer
-      countdownRef.current = setInterval(() => {
-        setTimeUntilRefresh(prev => {
-          if (prev <= 1) {
-            return 150;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    // Supabase Realtime subscription - refresh only when a new order arrives
+    const channel = supabase
+      .channel('orders-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+        },
+        (payload) => {
+          console.log('طلب جديد وصل:', payload);
+          fetchOrders();
+          toast({
+            title: "🔔 طلب جديد!",
+            description: "تم استلام طلب جديد وتحديث القائمة تلقائياً",
+            duration: 4000,
+          });
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-      }
+      supabase.removeChannel(channel);
     };
-  }, [fetchOrders, autoRefreshEnabled, toast]);
+  }, [fetchOrders, toast]);
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
@@ -89,23 +81,6 @@ export function OrderManagement() {
     }
   };
 
-  const handleRefresh = () => {
-    fetchOrders();
-    setTimeUntilRefresh(150); // Reset countdown
-  };
-
-  const toggleAutoRefresh = () => {
-    setAutoRefreshEnabled(!autoRefreshEnabled);
-    if (!autoRefreshEnabled) {
-      setTimeUntilRefresh(150);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
 
   const handleDeleteOrder = async (orderId: string) => {
     setDeletingOrderId(orderId);
@@ -210,95 +185,79 @@ export function OrderManagement() {
         </Card>
       ) : (
         <div className="grid gap-3 sm:gap-4">
-          {orders.map((order) => (
-            <Card key={order.id} className="overflow-hidden">
-              <CardHeader className="pb-2 sm:pb-3">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <CardTitle className="text-base sm:text-lg">
-                    طلب #{order.id.slice(0, 8)}
-                  </CardTitle>
-                  <Badge className={statusColors[order.status]}>
-                    {statusLabels[order.status]}
-                  </Badge>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                    {new Date(order.created_at).toLocaleString('ar-SA')}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                    {order.customer_name}
-                  </div>
-                </div>
-              </CardHeader>
+          {orders.map((order) => {
+            const itemCount = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
 
-              <CardContent className="space-y-3 sm:space-y-4">
-                {/* Customer Info */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 p-3 sm:p-4 bg-muted rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="font-medium text-sm">{order.customer_name}</span>
-                  </div>
-                  {order.customer_phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="text-sm" dir="ltr">{order.customer_phone}</span>
+            return (
+              <div key={order.id} className="group relative bg-white rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col gap-4">
+                {/* Header: Icon + Title + Date */}
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-900 shadow-sm">
+                      <Package size={24} />
                     </div>
-                  )}
-                  {order.customer_email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="text-sm" dir="ltr">{order.customer_email}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Order Items */}
-                <div>
-                  <h4 className="font-medium mb-2 text-sm sm:text-base">عناصر الطلب:</h4>
-                  <div className="space-y-2">
-                    {order.order_items.map((item) => (
-                      <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0 p-2 bg-muted/50 rounded text-sm">
-                        <div>
-                          <span className="font-medium">{item.product?.name}</span>
-                          <span className="text-muted-foreground mr-2">
-                            × {item.quantity}
-                          </span>
-                        </div>
-                        <span className="font-medium">
-                          {formatCurrency(item.total_price)}
-                        </span>
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900">طلب #{order.id.slice(0, 8)}</h3>
+                      <div className="flex flex-col">
+                        <p className="text-gray-500 text-sm font-medium">{order.customer_name}</p>
+                        {order.customer_phone && (
+                          <p className="text-gray-400 text-xs font-mono mt-0.5" dir="ltr">{order.customer_phone}</p>
+                        )}
                       </div>
-                    ))}
+                    </div>
                   </div>
+                  <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                    {new Date(order.created_at).toLocaleDateString('ar-SA')}
+                  </span>
                 </div>
 
-                {/* Notes */}
+                {/* Tags/Pills */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={cn("px-3 py-1 rounded-full text-xs font-bold", statusColors[order.status].replace('bg-', 'bg-').replace('500', '100') + " " + statusColors[order.status].replace('bg-', 'text-'))}>
+                    {statusLabels[order.status]}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+                    {itemCount} عناصر
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600">
+                    {formatCurrency(order.total_amount)}
+                  </span>
+                </div>
+
+                {/* Order Items Preview (Skills style) */}
+                <div className="flex flex-wrap gap-2">
+                  {order.order_items.slice(0, 3).map((item, idx) => (
+                    <span key={idx} className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-600 font-medium bg-white">
+                      {item.product?.name} × {item.quantity}
+                    </span>
+                  ))}
+                  {order.order_items.length > 3 && (
+                    <span className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-400 font-medium bg-gray-50">
+                      +{order.order_items.length - 3} المزيد
+                    </span>
+                  )}
+                </div>
+
+                {/* Notes Section */}
                 {order.notes && (
-                  <div>
-                    <h4 className="font-medium mb-1 text-sm sm:text-base">ملاحظات:</h4>
-                    <p className="text-muted-foreground p-2 bg-muted/50 rounded text-sm">
-                      {order.notes}
+                  <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+                    <p className="text-xs text-yellow-800 font-medium flex items-center gap-2">
+                      <span className="font-bold">ملاحظات:</span> {order.notes}
                     </p>
                   </div>
                 )}
 
-                {/* Total and Actions */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 pt-4 border-t">
-                  <div className="text-base sm:text-lg font-bold">
-                    الإجمالي: {formatCurrency(order.total_amount)}
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                {/* Actions Button (Large Blue) */}
+                <div className="pt-2">
+                  <div className="flex gap-2">
                     <Select
                       value={order.status}
                       onValueChange={(value: Order['status']) =>
                         handleStatusChange(order.id, value)
                       }
                     >
-                      <SelectTrigger className="w-full sm:w-40">
-                        <SelectValue />
+                      <SelectTrigger className="flex-1 h-12 rounded-xl bg-gray-900 text-white hover:bg-gray-800 border-none font-bold">
+                        <SelectValue placeholder="تغيير الحالة" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="pending">في الانتظار</SelectItem>
@@ -310,42 +269,24 @@ export function OrderManagement() {
                       </SelectContent>
                     </Select>
 
-                    {order.customer_phone && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-green-500 hover:bg-green-600 text-white border-green-500 hover:border-green-600 w-full sm:w-auto"
-                        onClick={() => handleSendWhatsApp(order.id, order.customer_phone!, order.customer_name, order.status)}
-                      >
-                        <MessageCircle className="w-4 h-4 ml-1" />
-                        واتساب
-                      </Button>
-                    )}
-
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-destructive hover:text-destructive w-full sm:w-auto"
-                          disabled={deletingOrderId === order.id}
-                        >
-                          <Trash2 className="w-4 h-4 ml-1" />
-                          حذف
-                        </Button>
+                        <button className="h-12 w-12 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors">
+                          <Trash2 size={20} />
+                        </button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>حذف الطلب</AlertDialogTitle>
                           <AlertDialogDescription>
-                            هل أنت متأكد من حذف هذا الطلب؟ لن تستطيع التراجع عن هذا الإجراء.
+                            هل أنت متأكد من حذف هذا الطلب؟
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>إلغاء</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDeleteOrder(order.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            className="bg-destructive hover:bg-destructive/90"
                           >
                             حذف
                           </AlertDialogAction>
@@ -353,10 +294,22 @@ export function OrderManagement() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
+
+                  {/* WhatsApp Link if available */}
+                  {order.customer_phone && (
+                    <Button
+                      variant="ghost"
+                      className="w-full mt-2 text-green-600 hover:text-green-700 hover:bg-green-50 h-10 rounded-xl"
+                      onClick={() => handleSendWhatsApp(order.id, order.customer_phone!, order.customer_name, order.status)}
+                    >
+                      <MessageCircle size={16} className="ml-2" />
+                      تواصل عبر واتساب
+                    </Button>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

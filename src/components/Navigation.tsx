@@ -1,111 +1,62 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ShoppingCart, Package, Menu, X, LogOut, ClipboardList } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { Home, ShoppingBag, Settings } from "lucide-react";
+import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { useOrderStore } from "@/stores/useOrderStore";
+import { useEffect } from "react";
 
-interface NavigationProps {}
-
-export function Navigation({}: NavigationProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const { signOut, user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
+export function Navigation() {
   const location = useLocation();
+  const { orders, fetchOrders, subscribeToOrders } = useOrderStore();
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "تم تسجيل الخروج",
-        description: "وداعاً!"
-      });
-    } catch (error) {
-      toast({
-        title: "خطأ",
-        description: "فشل في تسجيل الخروج",
-        variant: "destructive"
-      });
-    }
-  };
+  useEffect(() => {
+    fetchOrders();
+    const unsubscribe = subscribeToOrders();
+    return () => unsubscribe();
+  }, [fetchOrders, subscribeToOrders]);
+
+  const pendingOrdersCount = orders.filter(o => o.status === 'pending' || o.status === 'confirmed' || o.status === 'preparing').length;
 
   const navItems = [
-    { path: '/', label: 'نقاط البيع', icon: ShoppingCart },
-    { path: '/orders', label: 'الطلبات', icon: ClipboardList },
-    { path: '/management', label: 'إدارة المنتجات', icon: Package }
+    { path: '/management', label: 'Manage', icon: Settings },
+    { path: '/orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrdersCount > 0 },
+    { path: '/', label: 'Home', icon: Home },
   ];
 
   return (
-    <>
-      {/* Mobile Menu Button */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsOpen(!isOpen)}
-          className="bg-background/80 backdrop-blur-sm"
-        >
-          {isOpen ? <X size={16} /> : <Menu size={16} />}
-        </Button>
-      </div>
+    <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="flex items-center justify-center gap-6 bg-white/90 backdrop-blur-md px-8 py-4 rounded-full shadow-2xl border border-white/20">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
 
-      {/* Navigation */}
-      <Card className={`
-        fixed top-4 right-4 z-40 p-2 bg-background/95 backdrop-blur-sm border-border/50
-        md:relative md:top-auto md:right-auto md:z-auto md:bg-background md:backdrop-blur-none
-        ${isOpen ? 'block' : 'hidden md:block'}
-      `}>
-        <div className="flex flex-col md:flex-row gap-2">
-          <nav className="flex flex-col md:flex-row gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <Button
-                  key={item.path}
-                  variant={isActive ? "default" : "ghost"}
-                  onClick={() => {
-                    navigate(item.path);
-                    setIsOpen(false);
-                  }}
-                  className="justify-start md:justify-center gap-2 min-w-[140px]"
-                >
-                  <Icon size={16} />
-                  {item.label}
-                </Button>
-              );
-            })}
-          </nav>
-          
-          <div className="flex flex-col md:flex-row gap-1 border-t md:border-t-0 md:border-r pt-2 md:pt-0 md:pl-2">
-            <div className="text-xs text-muted-foreground px-2 py-1 md:hidden">
-              {user?.email}
-            </div>
-            <div className="flex items-center gap-2 px-2 py-1">
-              <ConnectionStatus />
-            </div>
-            <Button
-              variant="ghost"
-              onClick={handleSignOut}
-              className="justify-start md:justify-center gap-2 text-destructive hover:text-destructive"
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300",
+                isActive
+                  ? "bg-black text-white shadow-lg shadow-gray-400 scale-110"
+                  : "text-gray-400 hover:text-black hover:bg-gray-100"
+              )}
             >
-              <LogOut size={16} />
-              تسجيل الخروج
-            </Button>
-          </div>
-        </div>
-      </Card>
+              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
 
-      {/* Overlay for mobile */}
-      {isOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/30 z-30 backdrop-blur-sm" 
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-    </>
+              {/* Notification Badge */}
+              {item.badge && (
+                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+              )}
+
+              {isActive && (
+                <span className="absolute -bottom-8 text-[10px] font-bold text-black bg-white px-2 py-0.5 rounded-full shadow-sm opacity-0 animate-in fade-in slide-in-from-top-1 hidden">
+                  {item.label}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }

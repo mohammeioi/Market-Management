@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2 } from "lucide-react";
+import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2, ArrowRight } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductDialog } from "./ProductDialog";
 import { Product } from "@/types/pos";
@@ -224,27 +223,33 @@ export function ProductManagement() {
         className="hidden"
       />
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="text-right">
-          <h1 className="text-2xl font-bold text-foreground">إدارة المنتجات</h1>
-          <p className="text-muted-foreground">إضافة وتعديل وحذف المنتجات</p>
+          <div className="flex items-center gap-3 mb-1">
+            <button
+              onClick={() => window.history.back()}
+              className="p-2 -mr-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500"
+              title="العودة"
+            >
+              <ArrowRight size={24} />
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">إدارة المنتجات</h1>
+          </div>
+          <p className="text-gray-500 text-sm mr-10">إضافة وتعديل وحذف المنتجات بسهولة</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={handleRefresh} variant="outline" className="gap-2" disabled={loading || importing}>
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-            تحديث
+
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <Button onClick={handleAdd} className="gap-2 bg-gray-900 hover:bg-black text-white px-5 rounded-xl shadow-lg shadow-gray-200">
+            <Plus size={18} />
+            إضافة منتج
           </Button>
-          <Button onClick={handleImportClick} variant="outline" className="gap-2" disabled={importing || loading}>
-            {importing ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Upload size={16} />
-            )}
+          <Button onClick={handleImportClick} variant="outline" className="gap-2 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl px-4">
+            {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             استيراد من ملف
           </Button>
-          <Button onClick={handleAdd} className="gap-2">
-            <Plus size={16} />
-            إضافة منتج جديد
+          <Button onClick={handleRefresh} variant="ghost" className="gap-2 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl px-3" disabled={loading || importing}>
+            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            تحديث
           </Button>
         </div>
       </div>
@@ -287,102 +292,130 @@ export function ProductManagement() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-right">
-            <Package size={20} />
-            قائمة المنتجات ({products.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {products.length === 0 && !loading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package size={48} className="mx-auto mb-4 opacity-50" />
-                <p>لا توجد منتجات</p>
-                <p className="text-sm">ابدأ بإضافة منتجات جديدة</p>
-              </div>
-            ) : (
-              products.map((product) => (
+      {/* عنوان القائمة */}
+      <div className="flex items-center gap-2 text-right">
+        <Package size={20} />
+        <h2 className="text-lg font-semibold">قائمة المنتجات ({products.length})</h2>
+      </div>
+
+      {products.length === 0 && !loading ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <Package size={64} className="mx-auto mb-4 opacity-30" />
+          <p className="text-lg font-medium">لا توجد منتجات</p>
+          <p className="text-sm mt-1">ابدأ بإضافة منتجات جديدة</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className={`
+                group relative bg-white rounded-xl overflow-hidden
+                shadow-[0_2px_15px_-4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_25px_-8px_rgba(0,0,0,0.2)]
+                transition-all duration-300 border border-gray-100
+                flex flex-col
+                ${product.isAvailable === false ? 'opacity-75 grayscale-[0.5]' : ''}
+              `}
+            >
+              {/* Image Section - Floating effect with Ambient Glow */}
+              <div className="relative pt-6 px-6 pb-2 flex justify-center overflow-hidden">
+
+                {/* Ambient Background Layer */}
                 <div
-                  key={product.id}
-                  className={`flex items-center gap-4 p-4 border rounded-lg bg-pos-surface hover:shadow-md transition-shadow ${product.isAvailable === false ? 'opacity-60 border-red-300' : ''}`}
-                >
-                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  className="absolute inset-0 opacity-20 blur-xl scale-150 transition-transform duration-700 group-hover:scale-125 group-hover:opacity-30"
+                  style={{
+                    backgroundImage: `url(${product.image || '/placeholder.svg'})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-white/80 z-0" />
 
-                  <div className="flex-1 min-w-0 text-right">
-                    <h3 className="font-semibold text-foreground">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground">{product.category}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline">{formatCurrency(product.price)}</Badge>
-                      <Badge
-                        variant={product.stock > 10 ? "default" : product.stock > 0 ? "secondary" : "destructive"}
-                      >
-                        المخزون: {product.stock}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(product)}
-                      className="gap-1"
-                    >
-                      <Edit size={14} />
-                      تعديل
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleToggleAvailability(product.id)}
-                      className={`gap-1 ${product.isAvailable !== false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
-                    >
-                      {product.isAvailable !== false ? (
-                        <>
-                          <Eye size={14} />
-                          متوفر
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff size={14} />
-                          غير متوفر
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDelete(product)}
-                      className="gap-1"
-                    >
-                      <Trash2 size={14} />
-                      حذف
-                    </Button>
-                  </div>
+                <div className="relative z-10 w-40 h-40 drop-shadow-xl transition-transform duration-500 group-hover:scale-110">
+                  <img
+                    src={product.image || '/placeholder.svg'}
+                    alt={product.name}
+                    className="w-full h-full object-contain object-center"
+                    loading="lazy"
+                  />
                 </div>
-              ))
-            )}
-          </div>
 
-          {/* Infinite scroll sentinel */}
-          <div ref={loadMoreRef} className="h-4" />
+                {/* Top Right Actions (Removed) */}
+              </div>
 
-          {loading && (
-            <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-primary" size={32} />
+              {/* Content Section */}
+              <div className="p-5 text-center flex-1 flex flex-col items-center">
+                <p className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-2">
+                  {product.category}
+                </p>
+
+                <h3 className="font-bold text-gray-900 text-sm mb-3 min-h-[2.5rem] line-clamp-2 leading-relaxed">
+                  {product.name}
+                </h3>
+
+                <p className="text-xs text-gray-400 line-clamp-2 mb-4 px-2">
+                  {/* Description placeholder if actual description missing */}
+                  منتج مميز بجودة عالية، متوفر الآن في المخزون.
+                </p>
+
+                <div className="mt-auto items-baseline gap-2 mb-4">
+                  <span className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(product.price)}
+                  </span>
+                  {/* Optional: Original price placeholder for style match */}
+                  {/* <span className="text-sm text-gray-300 line-through decoration-1">$35.00</span> */}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="border-t border-gray-100 p-4 flex items-center justify-between bg-white gap-2">
+                <div className="flex items-center gap-1.5 text-gray-300 text-xs font-medium">
+                  <Package size={14} />
+                  <span>{product.stock}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleToggleAvailability(product.id)}
+                    className={`
+                        text-xs font-bold tracking-wider uppercase transition-colors px-2 py-1
+                        ${product.isAvailable !== false ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'}
+                        `}
+                  >
+                    {product.isAvailable !== false ? 'متوفر' : 'غير متوفر'}
+                  </button>
+
+                  <div className="w-px h-4 bg-gray-200 mx-1"></div>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
+                    className="w-8 h-8 rounded-full bg-gray-50 text-gray-600 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors border border-gray-100"
+                    title="تعديل"
+                  >
+                    <Edit size={14} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(product); }}
+                    className="w-8 h-8 rounded-full bg-gray-50 text-red-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors border border-gray-100"
+                    title="حذف"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Infinite scroll sentinel */}
+      <div ref={loadMoreRef} className="h-4" />
+
+      {loading && (
+        <div className="flex justify-center py-8">
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      )}
 
       <ProductDialog
         open={dialogOpen}
