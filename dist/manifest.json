@@ -1,12 +1,14 @@
 {
-  "name": "نظام نقاط البيع",
-  "short_name": "POS System",
+  "name": "متجري - إدارة الطلبات",
+  "short_name": "متجري",
   "description": "نظام نقاط بيع متقدم وسريع الاستجابة للمتاجر والمقاهي",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#3B82F6",
   "orientation": "portrait-primary",
+  "id": "/",
   "icons": [
     {
       "src": "/favicon.ico",
@@ -14,19 +16,23 @@
       "type": "image/x-icon"
     },
     {
-      "src": "/src/assets/app-icon.png",
+      "src": "/app-icon.png",
       "type": "image/png",
-      "sizes": "1024x1024",
+      "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/src/assets/app-icon.png",
-      "type": "image/png", 
-      "sizes": "1024x1024",
+      "src": "/app-icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "maskable"
     }
   ],
-  "categories": ["business", "productivity", "utilities"],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
   "lang": "ar",
   "dir": "rtl"
 }
