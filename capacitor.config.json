@@ -1,12 +1,22 @@
 {
-  "appId": "com.lovable.quickshoppos67",
-  "appName": "متجري",
+  "appId": "com.market.management",
+  "appName": "Market Management",
   "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
   "plugins": {
-    "Camera": {
-      "permissions": [
-        "camera"
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
       ]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#488AFF"
     }
   }
 }
