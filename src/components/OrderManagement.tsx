@@ -80,8 +80,9 @@ export function OrderManagement() {
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [pinInput, setPinInput] = useState('');
 
-  // Pre-loaded notification sound ref
-  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Web Audio API for reliable notification sound
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
 
   // Create PIN State
   const [createPinDialogOpen, setCreatePinDialogOpen] = useState(false);
@@ -99,17 +100,14 @@ export function OrderManagement() {
       await Notification.requestPermission();
     }
 
-    // Pre-load and unlock notification sound (user gesture required)
+    // Init Web Audio API and pre-load sound (user gesture unlocks AudioContext)
     try {
-      const audio = new Audio('/notification_sound.mp3');
-      audio.volume = 1;
-      // Play silently to unlock autoplay
-      audio.muted = true;
-      await audio.play();
-      audio.pause();
-      audio.muted = false;
-      audio.currentTime = 0;
-      notificationAudioRef.current = audio;
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioCtxRef.current = ctx;
+      const response = await fetch('/notification_sound.mp3');
+      const arrayBuffer = await response.arrayBuffer();
+      audioBufferRef.current = await ctx.decodeAudioData(arrayBuffer);
+      console.log('🔊 Notification sound loaded successfully');
     } catch (e) {
       console.warn('Audio pre-load failed:', e);
     }
@@ -291,11 +289,16 @@ export function OrderManagement() {
               duration: 4000,
             });
 
-            // Play notification sound (pre-loaded)
+            // Play notification sound via Web Audio API
             try {
-              if (notificationAudioRef.current) {
-                notificationAudioRef.current.currentTime = 0;
-                notificationAudioRef.current.play().catch(err => console.warn('Could not play sound:', err));
+              if (audioCtxRef.current && audioBufferRef.current) {
+                if (audioCtxRef.current.state === 'suspended') {
+                  audioCtxRef.current.resume();
+                }
+                const source = audioCtxRef.current.createBufferSource();
+                source.buffer = audioBufferRef.current;
+                source.connect(audioCtxRef.current.destination);
+                source.start(0);
               }
             } catch (e) {
               console.warn('Audio playback error:', e);
