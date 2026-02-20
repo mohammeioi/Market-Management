@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2, ArrowRight, Bell, Copy } from "lucide-react";
+import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2, ArrowRight, Bell, Copy, FolderOpen, X } from "lucide-react";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductDialog } from "./ProductDialog";
 import { Product } from "@/types/pos";
@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/currency";
 import * as XLSX from "xlsx";
 import { useNotificationStore } from "@/stores/useNotificationStore";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function NotificationTokenDisplay() {
   const { pushToken } = useNotificationStore();
@@ -49,7 +50,69 @@ export function ProductManagement() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
 
-  // Ref for infinite scroll sentinel
+  // Extract categories from products
+  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+
+  return (
+    <>
+      {/* Category Management Section */}
+      <div className="bg-green-50 border border-green-100 rounded-xl p-4 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <FolderOpen size={20} className="text-green-600" />
+          <h3 className="font-bold text-green-900">إدارة الفئات</h3>
+        </div>
+        
+        {/* Add new category */}
+        <div className="flex gap-2 mb-4">
+          <Input
+            placeholder="اسم فئة جديدة"
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            className="flex-1"
+          />
+          <Button onClick={addCategory} size="sm" className="bg-green-600 hover:bg-green-700">
+            <Plus size={16} className="ml-1" />
+            إضافة
+          </Button>
+        </div>
+
+        {/* Categories list */}
+        <div className="flex flex-wrap gap-2">
+          {categories.map((category) => (
+            <Badge key={category} variant="secondary" className="bg-white text-green-700 border-green-200 px-3 py-1">
+              {editingCategory === category ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="h-6 w-24 text-xs"
+                    autoFocus
+                  />
+                  <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0">
+                    ✓
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingCategory(null)} className="h-6 w-6 p-0">
+                    X
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <span>{category}</span>
+                  <Button size="sm" variant="ghost" onClick={() => startEdit(category)} className="h-4 w-4 p-0 hover:text-green-600">
+                    <Edit size={12} />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => deleteCategory(category)} className="h-4 w-4 p-0 hover:text-red-600">
+                    <X size={12} />
+                  </Button>
+                </div>
+              )}
+            </Badge>
+          ))}
+          {categories.length === 0 && (
+            <p className="text-sm text-gray-500">لا توجد فئات حالياً</p>
+          )}
+        </div>
+      </div>
   const loadMoreRef = useRef<HTMLDivElement>(null);
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);

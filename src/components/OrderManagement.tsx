@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,39 +16,107 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAttendanceStore } from '@/stores/useAttendanceStore';
 
-// Helper component for rendering an order item badge with image preview dialog
-const OrderItemBadge = ({ item }: { item: any }) => (
-  <Dialog>
-    <DialogTrigger asChild>
-      <button className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-600 font-medium bg-white hover:bg-gray-50 transition-colors">
-        {item.product?.name} × {item.quantity}
-      </button>
-    </DialogTrigger>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{item.product?.name}</DialogTitle>
-      </DialogHeader>
-      <div className="flex flex-col items-center gap-4 py-4">
-        {item.product?.image ? (
-          <img
-            src={item.product.image}
-            alt={item.product.name}
-            className="w-full max-h-64 object-contain rounded-lg"
-          />
-        ) : (
-          <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-            <Package size={48} />
+// Helper component for rendering an order item badge with image preview dialog and checklist
+const OrderItemBadge = ({ item }: { item: any }) => {
+  const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
+    // Initialize checklist with all items unchecked
+    const initial: Record<string, boolean> = {};
+    if (item.quantity > 1) {
+      for (let i = 1; i <= item.quantity; i++) {
+        initial[`item_${i}`] = false;
+      }
+    }
+    return initial;
+  });
+
+  const toggleCheck = (key: string) => {
+    setChecklist(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const checkedCount = Object.values(checklist).filter(Boolean).length;
+  const isFullyChecked = item.quantity <= 1 ? true : checkedCount === item.quantity;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-600 font-medium bg-white hover:bg-gray-50 transition-colors relative">
+          {item.product?.name} × {item.quantity}
+          {item.quantity > 1 && (
+            <span className={cn(
+              "absolute -top-1 -right-1 w-4 h-4 rounded-full text-xs font-bold",
+              isFullyChecked ? "bg-green-500 text-white" : "bg-orange-500 text-white"
+            )}>
+              {checkedCount}/{item.quantity}
+            </span>
+          )}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            {item.product?.name}
+            {item.quantity > 1 && (
+              <span className={cn(
+                "px-2 py-1 rounded-full text-xs font-bold",
+                isFullyChecked ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+              )}>
+                {checkedCount}/{item.quantity} تم التحقق
+              </span>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-4">
+          {item.product?.image ? (
+            <img
+              src={item.product.image}
+              alt={item.product.name}
+              className="w-full max-h-48 object-contain rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => {
+                // Open image in new tab for better viewing
+                if (item.product.image) {
+                  window.open(item.product.image, '_blank');
+                }
+              }}
+            />
+          ) : (
+            <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+              <Package size={48} />
+            </div>
+          )}
+          
+          {/* Checklist for multiple quantities */}
+          {item.quantity > 1 && (
+            <div className="w-full space-y-2">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">قائمة التحقق:</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {Array.from({ length: item.quantity }, (_, i) => (
+                  <label key={i + 1} className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={checklist[`item_${i + 1}`] || false}
+                      onChange={() => toggleCheck(`item_${i + 1}`)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">وحدة {i + 1}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          <div className="text-center space-y-2 w-full">
+            <p className="text-lg font-bold text-blue-600">{formatCurrency(item.unit_price)}</p>
+            <p className="text-sm text-gray-500">الكمية: {item.quantity}</p>
+            <p className="text-lg font-semibold text-green-600">الإجمالي: {formatCurrency(item.total_price)}</p>
           </div>
-        )}
-        <div className="text-center space-y-2">
-          <p className="text-lg font-bold">{formatCurrency(item.unit_price)}</p>
-          <p className="text-sm text-gray-500">الكمية: {item.quantity}</p>
-          <p className="text-sm font-semibold">الإجمالي: {formatCurrency(item.total_price)}</p>
         </div>
-      </div>
-    </DialogContent>
-  </Dialog>
-);
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500',
@@ -67,14 +136,22 @@ const statusLabels: Record<string, string> = {
   cancelled: 'ملغى',
 };
 
-import { BiometricAuth, BiometryError, BiometryErrorType } from '@aparajita/capacitor-biometric-auth';
 import { Capacitor } from '@capacitor/core';
+// BiometricAuth imported dynamically inside handleClockIn to avoid web crash
 
-export function OrderManagement() {
+export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string }) {
+  // Production mode - real attendance system
+  const DEBUG_MODE = false;
+  
+  const navigate = useNavigate();
   const { orders, loading, fetchOrders, updateOrderStatus, deleteOrder, approveOrder } = useOrderStore();
   const { isClockedIn, clockIn, clockOut, profiles, fetchProfiles, checkStatus, userPin, updatePin } = useAttendanceStore();
   const { toast } = useToast();
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debug logging
+  console.log('OrderManagement render:', { isClockedIn, loading, ordersCount: orders.length, profilesCount: profiles.length, DEBUG_MODE });
 
   // PIN Verification State
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
@@ -90,9 +167,40 @@ export function OrderManagement() {
   const [confirmPin, setConfirmPin] = useState('');
 
   useEffect(() => {
-    checkStatus();
-    fetchProfiles();
-  }, [checkStatus, fetchProfiles]);
+    console.log('OrderManagement useEffect - checking status and fetching profiles');
+    const init = async () => {
+      try {
+        await checkStatus();
+        await fetchProfiles();
+        // Always fetch orders on mount regardless of attendance status
+        await fetchOrders();
+      } catch (err) {
+        console.error('Initialization error:', err);
+        setError('Failed to initialize attendance system');
+      }
+    };
+    init();
+  }, [checkStatus, fetchProfiles, fetchOrders]);
+
+  // If there's an error, show error screen
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
+        <div className="p-6 bg-red-50 rounded-full">
+          <Package size={64} className="text-red-500" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-gray-900">حدث خطأ</h2>
+          <p className="text-gray-500 max-w-sm mx-auto">
+            {error}
+          </p>
+        </div>
+        <Button onClick={() => window.location.reload()} variant="outline">
+          إعادة تحميل الصفحة
+        </Button>
+      </div>
+    );
+  }
 
   const performClockIn = async () => {
     // Request browser notification permission on web
@@ -186,6 +294,8 @@ export function OrderManagement() {
     try {
       // Check if we are on a native platform (Android/iOS)
       if (Capacitor.isNativePlatform()) {
+        // Dynamically import biometric auth only on native platforms
+        const { BiometricAuth } = await import('@aparajita/capacitor-biometric-auth');
         const bioResult = await BiometricAuth.checkBiometry();
 
         if (bioResult.isAvailable) {
@@ -212,8 +322,9 @@ export function OrderManagement() {
           setPinDialogOpen(true);
         }
       }
-    } catch (error) {
-      if (error instanceof BiometryError) {
+    } catch (error: any) {
+      const isBiometryError = error?.constructor?.name === 'BiometryError';
+      if (isBiometryError) {
         // Handle biometric specific errors
         console.error('Biometric Error:', error);
         toast({
@@ -239,6 +350,7 @@ export function OrderManagement() {
         title: "تم تسجيل الخروج",
         description: "تم تسجيل انصرافك بنجاح.",
       });
+      // Removed navigation to home page - user stays on orders page
     }
   };
 
@@ -267,58 +379,54 @@ export function OrderManagement() {
     }
   };
 
+  // Set up real-time order subscription
   useEffect(() => {
-    if (isClockedIn) {
-      fetchOrders();
-
+    if (DEBUG_MODE || isClockedIn) {
       const channel = supabase
-        .channel('orders-realtime')
+        .channel('orders')
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*',
             schema: 'public',
-            table: 'orders',
+            table: 'orders'
           },
           (payload) => {
-            console.log('طلب جديد وصل:', payload);
+            console.log('Order change received:', payload);
             fetchOrders();
-            toast({
-              title: "🔔 طلب جديد!",
-              description: "تم استلام طلب جديد وتحديث القائمة تلقائياً",
-              duration: 4000,
-            });
-
-            // Play notification sound via Web Audio API
-            try {
-              if (audioCtxRef.current && audioBufferRef.current) {
-                if (audioCtxRef.current.state === 'suspended') {
-                  audioCtxRef.current.resume();
+            
+            // Play notification sound for new orders
+            if (payload.eventType === 'INSERT') {
+              try {
+                if (audioCtxRef.current && audioBufferRef.current) {
+                  if (audioCtxRef.current.state === 'suspended') {
+                    audioCtxRef.current.resume();
+                  }
+                  const source = audioCtxRef.current.createBufferSource();
+                  source.buffer = audioBufferRef.current;
+                  source.connect(audioCtxRef.current.destination);
+                  source.start(0);
                 }
-                const source = audioCtxRef.current.createBufferSource();
-                source.buffer = audioBufferRef.current;
-                source.connect(audioCtxRef.current.destination);
-                source.start(0);
+              } catch (e) {
+                console.warn('Audio playback error:', e);
               }
-            } catch (e) {
-              console.warn('Audio playback error:', e);
-            }
 
-            // Browser notification (Web only)
-            if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'granted') {
-              const orderData = payload.new as any;
-              const notification = new Notification('🔔 طلب جديد!', {
-                body: `طلب جديد من ${orderData?.customer_name || 'عميل'} بقيمة ${orderData?.total_amount || ''}`,
-                icon: '/favicon.ico',
-                tag: 'new-order-' + orderData?.id,
-              });
-              // Auto close after 5 seconds
-              setTimeout(() => notification.close(), 5000);
-              // Focus window when clicking notification
-              notification.onclick = () => {
-                window.focus();
-                notification.close();
-              };
+              // Browser notification (Web only)
+              if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'granted') {
+                const orderData = payload.new as any;
+                const notification = new Notification('🔔 طلب جديد!', {
+                  body: `طلب جديد من ${orderData?.customer_name || 'عميل'} بقيمة ${orderData?.total_amount || ''}`,
+                  icon: '/favicon.ico',
+                  tag: 'new-order-' + orderData?.id,
+                });
+                // Auto close after 5 seconds
+                setTimeout(() => notification.close(), 5000);
+                // Focus window when clicking notification
+                notification.onclick = () => {
+                  window.focus();
+                  notification.close();
+                };
+              }
             }
           }
         )
@@ -328,7 +436,7 @@ export function OrderManagement() {
         supabase.removeChannel(channel);
       };
     }
-  }, [fetchOrders, toast, isClockedIn]);
+  }, [fetchOrders, toast, isClockedIn, DEBUG_MODE]);
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
@@ -418,8 +526,37 @@ export function OrderManagement() {
     });
   };
 
-  // ATTENDANCE GUARD: If not clocked in, show Check-in Screen
-  if (!isClockedIn) {
+  if (DEBUG_MODE) {
+    console.log('DEBUG MODE: Showing orders interface regardless of attendance');
+    // Continue to render the orders interface
+  } else if (!isClockedIn && profiles.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
+        <div className="p-6 bg-gray-50 rounded-full animate-pulse">
+          <Fingerprint size={64} className="text-gray-400" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-gray-900">جاري التحميل...</h2>
+          <p className="text-gray-500 max-w-sm mx-auto">
+            يرجى الانتظار بينما يتم التحقق من حالة الحضور.
+          </p>
+        </div>
+        {/* Fallback button to bypass attendance check */}
+        <Button
+          onClick={() => {
+            console.log('Bypassing attendance check for debugging');
+            setError(null);
+          }}
+          variant="outline"
+          className="mt-4"
+        >
+          تجاوز التحقق من الحضور
+        </Button>
+      </div>
+    );
+  }
+
+  if (!DEBUG_MODE && !isClockedIn) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
         <div className="p-6 bg-red-50 rounded-full animate-pulse">
@@ -504,22 +641,29 @@ export function OrderManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Presence Bar (Circles) */}
+      {/* Presence Bar (Circles) - Admins Only */}
       <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide">
         <div className="flex -space-x-3 space-x-reverse min-h-[50px] items-center px-2">
-          {profiles.map((profile) => (
-            <div key={profile.id} className="relative group">
-              <div className={cn(
-                "w-12 h-12 rounded-full border-2 flex items-center justify-center bg-gray-100 text-xs font-bold text-gray-600 shadow-sm transition-transform hover:scale-110 hover:z-10",
-                profile.is_clocked_in ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 grayscale"
-              )}>
-                {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?'}
+          {profiles.filter(profile => profile.role === 'admin').map((profile) => {
+            // Check if admin is clocked in via localStorage
+            const attendanceKey = `attendance_${profile.user_id}`;
+            const attendanceData = localStorage.getItem(attendanceKey);
+            const isClockedIn = attendanceData ? JSON.parse(attendanceData).clockedIn : false;
+            
+            return (
+              <div key={profile.id} className="relative group">
+                <div className={cn(
+                  "w-12 h-12 rounded-full border-2 flex items-center justify-center bg-gray-100 text-xs font-bold text-gray-600 shadow-sm transition-transform hover:scale-110 hover:z-10",
+                  isClockedIn ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 grayscale"
+                )}>
+                  {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?'}
+                </div>
+                {isClockedIn && (
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                )}
               </div>
-              {profile.is_clocked_in && (
-                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="h-8 w-px bg-gray-200 mx-2"></div>
         <Button
@@ -558,9 +702,19 @@ export function OrderManagement() {
         <div className="grid gap-3 sm:gap-4">
           {orders.map((order) => {
             const itemCount = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
+            const isScannedOrder = scannedOrderId && order.id.includes(scannedOrderId);
 
             return (
-              <div key={order.id} className="group relative bg-white rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col gap-4">
+              <div key={order.id} className={cn(
+                "group relative bg-white rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all border flex flex-col gap-4",
+                isScannedOrder ? "border-blue-500 shadow-lg shadow-blue-200 animate-pulse" : "border-gray-100"
+              )}>
+                {/* Scanned Order Badge */}
+                {isScannedOrder && (
+                  <div className="absolute -top-2 -right-2 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+                    تم المسح
+                  </div>
+                )}
                 {/* Header: Icon + Title + Date */}
                 <div className="flex justify-between items-start">
                   <div className="flex gap-4">

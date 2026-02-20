@@ -41,31 +41,24 @@ serve(async (req) => {
 
         // 5. Send Notifications
         const results = await Promise.all(fcmTokens.map(async (token) => {
-            const res = await fetch(`https://fcm.googleapis.com/v1/projects/${FIREBASE_SERVICE_ACCOUNT.project_id}/messages:send`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
+            const notificationPayload = {
+                title: `طلب جديد! #${record.id.slice(0, 8)}`,
+                body: `طلب جديد من ${record.customer_name} بقيمة ${record.total_amount}`,
+                data: {
+                    type: 'new_order',
+                    order_id: record.id || '',
+                    click_action: 'FLUTTER_NOTIFICATION_CLICK',
                 },
-                body: JSON.stringify({
-                    message: {
-                        token: token,
-                        notification: {
-                            title: `طلب جديد! #${record.id.slice(0, 8)}`,
-                            body: `طلب جديد من ${record.customer_name} بقيمة ${record.total_amount}`,
-                        },
-                        android: {
-                            priority: "high",
-                            notification: {
-                                sound: "notification_sound.mp3",
-                                channel_id: "orders_channel",
-                                click_action: "FCM_PLUGIN_ACTIVITY",
-                            }
-                        }
+                android: {
+                    priority: "high",
+                    notification: {
+                        channel_id: "default",
+                        icon: "ic_notification", // Use shopping cart icon
+                        click_action: "FCM_PLUGIN_ACTIVITY",
                     }
-                })
-            })
-            return res.json()
+                }
+            }
+            return sendFCM(accessToken, FIREBASE_SERVICE_ACCOUNT.project_id, token, notificationPayload)
         }))
 
         return new Response(JSON.stringify({ success: true, results }), { status: 200 })
@@ -129,4 +122,47 @@ async function importKey(pem: string) {
         false,
         ["sign"]
     )
+}
+
+async function sendFCM(accessToken: string, projectId: string, token: string, payload: { title: string, body: string, data: any, android?: any }) {
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message: {
+                token: token,
+                notification: {
+                    title: payload.title,
+                    body: payload.body,
+                },
+                data: payload.data,
+                android: payload.android || {
+                    priority: "high",
+                    notification: {
+                        sound: "default",
+                        channel_id: "default",
+                        click_action: "FCM_PLUGIN_ACTIVITY",
+                        default_vibrate_timings: true,
+                        default_light_settings: true,
+                        visibility: "PUBLIC",
+                    }
+                },
+                apns: {
+                    payload: {
+                        aps: {
+                            sound: "default",
+                            badge: 1,
+                            "content-available": 1,
+                        }
+                    }
+                }
+            }
+        })
+    })
+    const result = await res.json()
+    console.log('FCM send result:', JSON.stringify(result))
+    return result
 }

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Product } from "@/types/pos";
 import { formatCurrency } from "@/lib/currency";
-import { Zap } from "lucide-react";
+import { Zap, ZoomIn } from "lucide-react";
 import { ProductDetailsDialog } from "./ProductDetailsDialog";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ProductCardProps {
   product: Product;
@@ -11,6 +12,12 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showFullImage, setShowFullImage] = useState(false);
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowFullImage(true);
+  };
 
   return (
     <>
@@ -38,9 +45,24 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Center: Large Image */}
         <div className="flex-1 flex items-center justify-center w-full my-2 relative z-10">
-          <div className={cn("w-32 h-32 rounded-2xl flex items-center justify-center text-gray-900 overflow-hidden shadow-sm bg-transparent")}>
+          <div className={cn("w-32 h-32 rounded-2xl flex items-center justify-center text-gray-900 overflow-hidden shadow-sm bg-transparent relative group")}>
             {product.image ? (
-              <img src={product.image} alt="" className="w-full h-full object-cover mix-blend-multiply drop-shadow-lg" />
+              <>
+                <img 
+                  src={product.image} 
+                  alt="" 
+                  className="w-full h-full object-cover mix-blend-multiply drop-shadow-lg cursor-pointer hover:scale-105 transition-transform" 
+                  onClick={handleImageClick}
+                />
+                {/* Hover effect for image */}
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <div className="bg-white rounded-full p-2 shadow-lg">
+                      <ZoomIn size={16} className="text-gray-700" />
+                    </div>
+                  </div>
+                </div>
+              </>
             ) : (
               <Zap size={40} className="text-gray-300" />
             )}
@@ -63,6 +85,22 @@ export function ProductCard({ product }: ProductCardProps) {
         onOpenChange={setShowDetails}
         product={product}
       />
+
+      {/* Full Image Dialog */}
+      <Dialog open={showFullImage} onOpenChange={setShowFullImage}>
+        <DialogContent className="sm:max-w-[95vw] max-h-[95vh] p-1 sm:p-6">
+          <DialogHeader className="hidden sm:block">
+            <DialogTitle className="text-right text-xl font-bold">صورة المنتج</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center min-h-[50vh] sm:min-h-[70vh]">
+            <img
+              src={product.image}
+              alt={product.name}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

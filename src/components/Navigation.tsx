@@ -3,11 +3,15 @@ import { Home, ShoppingBag, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useOrderStore } from "@/stores/useOrderStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export function Navigation() {
   const location = useLocation();
+  const { user } = useAuth();
   const { orders, fetchOrders, subscribeToOrders } = useOrderStore();
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders();
@@ -15,11 +19,33 @@ export function Navigation() {
     return () => unsubscribe();
   }, [fetchOrders, subscribeToOrders]);
 
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (!error && data) {
+          setUserRole(data.role);
+        }
+      }
+    };
+    
+    fetchUserRole();
+  }, [user]);
+
   const pendingOrdersCount = orders.filter(o => o.status === 'pending' || o.status === 'confirmed' || o.status === 'preparing').length;
 
-  const navItems = [
+  // Role-based navigation items
+  const navItems = userRole === 'admin' ? [
     { path: '/management', label: 'Manage', icon: Settings },
     { path: '/orders', label: 'Orders', icon: ShoppingBag, badge: pendingOrdersCount > 0 },
+    { path: '/', label: 'Home', icon: Home },
+  ] : [
+    { path: '/user-orders', label: 'Orders', icon: ShoppingBag },
     { path: '/', label: 'Home', icon: Home },
   ];
 
