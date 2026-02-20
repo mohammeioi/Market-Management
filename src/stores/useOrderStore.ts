@@ -91,6 +91,8 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         0
       );
 
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -99,6 +101,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
           customer_email: orderData.customer_email,
           total_amount: totalAmount,
           notes: orderData.notes,
+          user_id: user?.id,
         })
         .select()
         .single();
@@ -161,6 +164,9 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
           order.id === orderId ? { ...order, status } : order
         )
       }));
+
+      // Note: push notification to order creator is handled by DB trigger
+      // (notify_order_status_change → order-status-notification edge function)
     } catch (error) {
       console.error('Error updating order status:', error);
       set({ error: 'حدث خطأ في تحديث حالة الطلب' });

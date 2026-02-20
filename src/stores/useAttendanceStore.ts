@@ -7,7 +7,6 @@ export interface Profile {
     full_name: string | null;
     email: string | null;
     role: string | null;
-    is_clocked_in: boolean | null;
     pin_code: string | null;
 }
 
@@ -33,19 +32,36 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
     checkStatus: async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                console.log('No user found in auth');
+                set({ isClockedIn: false });
+                return;
+            }
 
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('is_clocked_in')
-                .eq('user_id', user.id)
-                .single();
-
-            if (data && !error) {
-                set({ isClockedIn: !!data.is_clocked_in });
+            // Check localStorage for real attendance status
+            const attendanceKey = `attendance_${user.id}`;
+            const attendanceData = localStorage.getItem(attendanceKey);
+            
+            if (attendanceData) {
+                const { clockedIn, clockInTime } = JSON.parse(attendanceData);
+                // Check if clocked in today
+                const today = new Date().toDateString();
+                const clockInDate = new Date(clockInTime).toDateString();
+                
+                if (clockedIn && today === clockInDate) {
+                    set({ isClockedIn: true });
+                    console.log('User is clocked in today:', { userId: user.id, clockInTime });
+                } else {
+                    set({ isClockedIn: false });
+                    // Clear old attendance data
+                    localStorage.removeItem(attendanceKey);
+                }
+            } else {
+                set({ isClockedIn: false });
             }
         } catch (error) {
             console.error('Error checking status:', error);
+            set({ isClockedIn: false });
         }
     },
 
@@ -55,7 +71,6 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
-                .order('is_clocked_in', { ascending: false }) // Show online users first
                 .order('full_name', { ascending: true });
 
             if (error) throw error;
@@ -70,40 +85,64 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
     clockIn: async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return { success: false, error: 'User not found' };
+            if (!user) {
+                return { success: false, error: 'User not authenticated' };
+            }
 
-            const { error } = await supabase
-                .from('profiles')
-                .update({ is_clocked_in: true })
-                .eq('user_id', user.id);
-
-            if (error) throw error;
-
+            // Store real attendance in localStorage
+            const attendanceKey = `attendance_${user.id}`;
+            const clockInTime = new Date().toISOString();
+            const attendanceData = {
+                clockedIn: true,
+                clockInTime: clockInTime,
+                userId: user.id
+            };
+            
+            localStorage.setItem(attendanceKey, JSON.stringify(attendanceData));
             set({ isClockedIn: true });
-            get().fetchProfiles(); // Refresh list
+            
+            console.log('User clocked in successfully:', { userId: user.id, clockInTime });
             return { success: true };
-        } catch (error: any) {
-            return { success: false, error: error.message };
+        } catch (error) {
+            console.error('Clock in error:', error);
+            return { success: false, error: 'Failed to clock in' };
         }
     },
 
     clockOut: async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return { success: false, error: 'User not found' };
+            if (!user) {
+                return { success: false, error: 'User not authenticated' };
+            }
 
-            const { error } = await supabase
-                .from('profiles')
-                .update({ is_clocked_in: false })
-                .eq('user_id', user.id);
-
-            if (error) throw error;
-
+            // Remove from localStorage for real clock out
+            const attendanceKey = `attendance_${user.id}`;
+            const attendanceData = localStorage.getItem(attendanceKey);
+            
+            if (attendanceData) {
+                const parsedData = JSON.parse(attendanceData);
+                // Update with clock out time
+                const updatedData = {
+                    ...parsedData,
+                    clockedIn: false,
+                    clockOutTime: new Date().toISOString()
+                };
+                
+                // Store clock out record (for attendance tracking)
+                localStorage.setItem(`${attendanceKey}_history`, JSON.stringify(updatedData));
+                
+                // Remove current attendance
+                localStorage.removeItem(attendanceKey);
+            }
+            
             set({ isClockedIn: false });
-            get().fetchProfiles(); // Refresh list
+            console.log('User clocked out successfully:', { userId: user.id, clockOutTime: new Date().toISOString() });
+            
             return { success: true };
-        } catch (error: any) {
-            return { success: false, error: error.message };
+        } catch (error) {
+            console.error('Clock out error:', error);
+            return { success: false, error: 'Failed to clock out' };
         }
     },
 

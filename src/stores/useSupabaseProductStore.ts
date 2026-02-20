@@ -229,6 +229,9 @@ export const useSupabaseProductStore = create<ProductStore>(
         // Invalidate cache since we added a product
         requestCache.clear();
 
+        // Force-refresh categories so new ones appear in dropdown
+        await get().fetchCategories(true);
+
         const newProduct: Product = {
           id: data.id,
           name: data.name,
@@ -319,6 +322,9 @@ export const useSupabaseProductStore = create<ProductStore>(
         // Invalidate cache since we added products
         requestCache.clear();
 
+        // Force-refresh categories so new ones appear in dropdown
+        await get().fetchCategories(true);
+
         // Refresh products list
         await get().fetchProductsByCategory(null, 0);
 
@@ -365,6 +371,9 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         // Invalidate cache
         requestCache.clear();
+
+        // Force-refresh categories so new ones appear in dropdown
+        await get().fetchCategories(true);
 
         set(state => ({
           products: state.products.map(product =>
