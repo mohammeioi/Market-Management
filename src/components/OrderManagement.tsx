@@ -16,6 +16,70 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAttendanceStore } from '@/stores/useAttendanceStore';
 
+// CSS for ripple effect
+const rippleStyles = `
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(0);
+    animation: ripple-animation 0.6s ease-out;
+    pointer-events: none;
+  }
+  
+  .ripple-icon {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
+    transform: scale(0);
+    animation: ripple-icon-animation 0.8s ease-out;
+    pointer-events: none;
+    z-index: 20;
+  }
+  
+  @keyframes ripple-animation {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes ripple-icon-animation {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.8);
+    }
+    50% {
+      transform: scale(2);
+      opacity: 0.6;
+      background: rgba(34, 197, 94, 0.4);
+    }
+    100% {
+      transform: scale(3);
+      opacity: 0;
+      background: rgba(34, 197, 94, 0.2);
+    }
+  }
+  
+  .check-icon {
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .check-icon:hover {
+    transform: scale(1.1);
+  }
+`;
+
+// Inject styles into head
+if (typeof document !== 'undefined' && !document.getElementById('ripple-styles')) {
+  const styleSheet = document.createElement('style');
+  styleSheet.id = 'ripple-styles';
+  styleSheet.textContent = rippleStyles;
+  document.head.appendChild(styleSheet);
+}
+
 // Helper component for rendering an expandable order items list
 const OrderItemsAccordion = ({ items, orderId }: { items: any[], orderId: string }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -357,7 +421,32 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
     }
   };
 
-  const handleApproveOrder = async (orderId: string) => {
+  const handleApproveOrder = async (orderId: string, event?: React.MouseEvent) => {
+    // Create ripple effect on the check icon
+    if (event) {
+      const button = event.currentTarget as HTMLElement;
+      const checkIcon = button.querySelector('.check-icon') as HTMLElement;
+      
+      if (checkIcon) {
+        const ripple = document.createElement('span');
+        const rect = checkIcon.getBoundingClientRect();
+        const size = 40; // Fixed size for the icon ripple
+        const x = event.clientX - rect.left - size / 2;
+        const y = event.clientY - rect.top - size / 2;
+        
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        ripple.classList.add('ripple-icon');
+        
+        checkIcon.appendChild(ripple);
+        
+        setTimeout(() => {
+          ripple.remove();
+        }, 600);
+      }
+    }
+
     try {
       const result = await approveOrder(orderId);
       if (result.success) {
@@ -430,7 +519,111 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
                   notification.close();
                 };
               }
+            } else if (payload.eventType === 'UPDATE') {
+              const oldData = payload.old as any;
+              const newData = payload.new as any;
+
+              if (newData.status && oldData.status && newData.status !== oldData.status) {
+                const getStatusText = (status: string) => {
+                  switch (status) {
+                    case 'pending': return 'قيد الانتظار';
+                    case 'processing': return 'قيد التجهيز';
+                    case 'completed': return 'مكتمل';
+                    case 'cancelled': return 'ملغي';
+                    default: return status;
+                  }
+                };
+
+                // Browser notification (Web only)
+                if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'granted') {
+                  const notification = new Notification('🔄 تحديث حالة الطلب!', {
+                    body: `تم تحديث حالة طلب ${newData.customer_name || 'العميل'} إلى: ${getStatusText(newData.status)}`,
+                    icon: '/favicon.ico',
+                    tag: 'update-order-' + newData.id,
+                  });
+                  // Auto close after 5 seconds
+                  setTimeout(() => notification.close(), 5000);
+                  // Focus window when clicking notification
+                  notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                  };
+                }
+
+                // Also show a toast in app
+                toast({
+                  title: 'تحديث حالة الطلب',
+                  description: `طلب ${newData.customer_name || 'العميل'} أصبح ${getStatusText(newData.status)}`,
+                });
+              }
             }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'order_items'
+          },
+          async (payload) => {
+            console.log('Order item added:', payload);
+            fetchOrders();
+
+            const newItem = payload.new as any;
+
+            // Play notification sound
+            try {
+              if (audioCtxRef.current && audioBufferRef.current) {
+                if (audioCtxRef.current.state === 'suspended') {
+                  audioCtxRef.current.resume();
+                }
+                const source = audioCtxRef.current.createBufferSource();
+                source.buffer = audioBufferRef.current;
+                source.connect(audioCtxRef.current.destination);
+                source.start(0);
+              }
+            } catch (e) {
+              console.warn('Audio playback error:', e);
+            }
+
+            // Fetch product name and order for better notification
+            const { data: productData } = await supabase
+              .from('products')
+              .select('name')
+              .eq('id', newItem.product_id)
+              .single();
+
+            const { data: orderData } = await supabase
+              .from('orders')
+              .select('customer_name')
+              .eq('id', newItem.order_id)
+              .single();
+
+            const productName = productData?.name || 'منتج جديد';
+            const customerName = orderData?.customer_name || 'عميل';
+
+            // Browser notification (Web only)
+            if (!Capacitor.isNativePlatform() && 'Notification' in window && Notification.permission === 'granted') {
+              const notification = new Notification('📦 منتج إضافي للطلب!', {
+                body: `قام ${customerName} بإضافة: ${productName} (الكمية: ${newItem.quantity}) إلى طلبه`,
+                icon: '/favicon.ico',
+                tag: 'new-item-' + newItem.id,
+              });
+              // Auto close after 5 seconds
+              setTimeout(() => notification.close(), 5000);
+              // Focus window when clicking notification
+              notification.onclick = () => {
+                window.focus();
+                notification.close();
+              };
+            }
+
+            // Also show a toast in app
+            toast({
+              title: 'إضافة للطلب الحالي',
+              description: `قام ${customerName} بإضافة ${productName} للطلب`,
+            });
           }
         )
         .subscribe();
@@ -788,16 +981,25 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
                   <div className="mb-3">
                     {!order.approved_by ? (
                       <Button
-                        onClick={() => handleApproveOrder(order.id)}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl shadow-sm"
+                        onClick={(event) => handleApproveOrder(order.id, event)}
+                        className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold h-12 rounded-xl shadow-lg hover:shadow-green-500/25 transform transition-all duration-300 hover:scale-105 active:scale-95 relative overflow-hidden group"
                       >
-                        <CheckCircle className="mr-2 h-5 w-5" />
-                        موافقة على الطلب
+                        {/* Shimmer effect on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></div>
+                        
+                        {/* Click ripple effect */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="ripple-container"></div>
+                        </div>
+                        
+                        <CheckCircle className="mr-2 h-5 w-5 relative z-10 check-icon" />
+                        <span className="relative z-10">موافقة على الطلب</span>
                       </Button>
                     ) : (
-                      <div className="w-full bg-green-50 border border-green-200 text-green-700 font-bold h-10 rounded-xl flex items-center justify-center">
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        تمت الموافقة من قبلك
+                      <div className="w-full bg-gradient-to-r from-green-50 to-green-100 border border-green-200 text-green-700 font-bold h-10 rounded-xl flex items-center justify-center relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-200/30 to-transparent -translate-x-full animate-pulse"></div>
+                        <CheckCircle className="mr-2 h-4 w-4 relative z-10" />
+                        <span className="relative z-10">تمت الموافقة من قبلك</span>
                       </div>
                     )}
                   </div>
