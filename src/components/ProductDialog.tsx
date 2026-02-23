@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
@@ -32,12 +33,57 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
   const [newCategoryName, setNewCategoryName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Parent product search state
+  const [parentSearch, setParentSearch] = useState("");
+  const [parentOptions, setParentOptions] = useState<{ id: string; name: string }[]>([]);
+  const [showParentDropdown, setShowParentDropdown] = useState(false);
+  const [selectedParentName, setSelectedParentName] = useState("");
+
   // Fetch categories when dialog opens
   useEffect(() => {
     if (open) {
       fetchCategories();
+      // Load initial parent options
+      const loadInitialParents = async () => {
+        const { data } = await supabase
+          .from('products')
+          .select('id, name')
+          .is('parent_id', null)
+          .order('name', { ascending: true })
+          .limit(15);
+        if (data) setParentOptions(data.filter(p => p.id !== product?.id));
+      };
+      loadInitialParents();
     }
-  }, [open, fetchCategories]);
+  }, [open, fetchCategories, product]);
+
+  // Search parent products from Supabase on typing
+  useEffect(() => {
+    if (!parentSearch.trim()) return;
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('id, name')
+        .is('parent_id', null)
+        .ilike('name', `%${parentSearch}%`)
+        .order('name', { ascending: true })
+        .limit(15);
+      if (data) setParentOptions(data.filter(p => p.id !== product?.id));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [parentSearch, product]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('#parent_search') && !target.closest('.parent-dropdown')) {
+        setShowParentDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (product) {
@@ -51,6 +97,18 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       });
       setIsAddingNewCategory(false);
       setNewCategoryName("");
+      // Set parent search name if editing a variant
+      if (product.parent_id) {
+        supabase.from('products').select('name').eq('id', product.parent_id).single().then(({ data }) => {
+          if (data) {
+            setSelectedParentName(data.name);
+            setParentSearch(data.name);
+          }
+        });
+      } else {
+        setSelectedParentName("");
+        setParentSearch("");
+      }
     } else {
       setFormData({
         name: "",
@@ -62,6 +120,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       });
       setIsAddingNewCategory(false);
       setNewCategoryName("");
+      setSelectedParentName("");
+      setParentSearch("");
     }
   }, [product, open]);
 
@@ -267,24 +327,57 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
 
           <div className="space-y-2">
             <Label htmlFor="parent_id" className="text-right block">تنويع لمنتج آخر (اختياري)</Label>
-            <Select
-              value={formData.parent_id}
-              onValueChange={(value) => handleInputChange("parent_id", value)}
-            >
-              <SelectTrigger className="w-full text-right">
-                <SelectValue placeholder="اختر المنتج الرئيسي" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">بدون (منتج رئيسي)</SelectItem>
-                {useSupabaseProductStore.getState().products
-                  .filter(p => !p.parent_id && p.id !== product?.id) // Only show top-level products that aren't this product
-                  .map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
+            <div className="relative">
+              <Input
+                id="parent_search"
+                value={parentSearch}
+                onChange={(e) => {
+                  setParentSearch(e.target.value);
+                  setShowParentDropdown(true);
+                }}
+                onFocus={() => setShowParentDropdown(true)}
+                placeholder="ابحث عن المنتج الرئيسي..."
+                className="text-right w-full"
+                autoComplete="off"
+              />
+              {showParentDropdown && (
+                <div className="parent-dropdown absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  <button
+                    type="button"
+                    className={`w-full text-right px-3 py-2 hover:bg-gray-100 text-sm ${formData.parent_id === 'none' ? 'bg-blue-50 font-bold' : ''}`}
+                    onClick={() => {
+                      handleInputChange("parent_id", "none");
+                      setParentSearch("");
+                      setSelectedParentName("");
+                      setShowParentDropdown(false);
+                    }}
+                  >
+                    بدون (منتج رئيسي)
+                  </button>
+                  {parentOptions.map((p) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      className={`w-full text-right px-3 py-2 hover:bg-gray-100 text-sm ${formData.parent_id === p.id ? 'bg-blue-50 font-bold' : ''}`}
+                      onClick={() => {
+                        handleInputChange("parent_id", p.id);
+                        setSelectedParentName(p.name);
+                        setParentSearch(p.name);
+                        setShowParentDropdown(false);
+                      }}
+                    >
                       {p.name}
-                    </SelectItem>
+                    </button>
                   ))}
-              </SelectContent>
-            </Select>
+                  {parentSearch.trim() && parentOptions.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-gray-400 text-center">لا توجد نتائج</div>
+                  )}
+                </div>
+              )}
+            </div>
+            {selectedParentName && formData.parent_id !== 'none' && (
+              <p className="text-sm text-blue-600 text-right">المنتج الأب: {selectedParentName}</p>
+            )}
             <p className="text-xs text-muted-foreground text-right mt-1">
               إذا تم اختيار منتج، سيظهر هذا المنتج كخيار فرعي داخله واجهة الكاشير (مثلاً كنكهة إضافية).
             </p>

@@ -17,9 +17,14 @@ interface ProductStore {
 
   // Product actions
   fetchProducts: () => Promise<void>; // Deprecated
-  searchProducts: (query: string) => Promise<void>;
+  searchProducts: (query: string, returnParentForVariants?: boolean) => Promise<void>;
   fetchProductsByCategory: (categoryId: string | null, page?: number) => Promise<void>;
   fetchCategories: (forceRefresh?: boolean) => Promise<void>;
+
+  // Category management actions
+  updateCategory: (id: string, newName: string) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  batchAssignCategory: (productIds: string[], categoryName: string) => Promise<void>;
 
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   addProductsBatch: (products: Array<Omit<Product, 'id'>>) => Promise<{ success: number; failed: number }>;
@@ -75,7 +80,85 @@ export const useSupabaseProductStore = create<ProductStore>(
       }
     },
 
-    searchProducts: async (query: string) => {
+    updateCategory: async (id: string, newName: string) => {
+      try {
+        const { error } = await supabase
+          .from('categories')
+          .update({ name: newName })
+          .eq('id', id);
+
+        if (error) throw error;
+        await get().fetchCategories(true);
+      } catch (error) {
+        console.error('Error updating category:', error);
+        throw error;
+      }
+    },
+
+    deleteCategory: async (id: string) => {
+      try {
+        // Find if any products are using this category to set them to null first or let foreign key handle if ON DELETE SET NULL is set
+        // Usually, best practice is to explicitely handle it.
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ category_id: null })
+          .eq('category_id', id);
+
+        if (updateError) throw updateError;
+
+        const { error } = await supabase
+          .from('categories')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+        await get().fetchCategories(true);
+      } catch (error) {
+        console.error('Error deleting category:', error);
+        throw error;
+      }
+    },
+
+    batchAssignCategory: async (productIds: string[], categoryName: string) => {
+      try {
+        // 1. Find or create the category
+        let categoryId: string;
+        const { data: existingCategory } = await supabase
+          .from('categories')
+          .select('id')
+          .eq('name', categoryName)
+          .single();
+
+        if (existingCategory) {
+          categoryId = existingCategory.id;
+        } else {
+          const { data: newCategory, error: categoryError } = await supabase
+            .from('categories')
+            .insert({ name: categoryName })
+            .select('id')
+            .single();
+
+          if (categoryError) throw categoryError;
+          categoryId = newCategory.id;
+        }
+
+        // 2. Update products
+        const { error } = await supabase
+          .from('products')
+          .update({ category_id: categoryId })
+          .in('id', productIds);
+
+        if (error) throw error;
+
+        requestCache.clear();
+        await get().fetchCategories(true);
+      } catch (error) {
+        console.error('Error batch assigning categories:', error);
+        throw error;
+      }
+    },
+
+    searchProducts: async (query: string, returnParentForVariants = false) => {
       set({ loading: true, error: null, hasMore: false }); // Search doesn't support pagination here yet
       try {
         if (!query.trim()) {
@@ -84,25 +167,52 @@ export const useSupabaseProductStore = create<ProductStore>(
           return;
         }
 
-        let supabaseQuery = supabase
+        const isBarcode = /^\d+$/.test(query) && query.length > 3;
+
+        // Step 1: Base query to find matching products
+        let baseQuery = supabase
           .from('products')
-          .select('id, name, price, stock, image, barcode, is_available, category_id, parent_id, categories(name), variants:products!public_products_parent_id_fkey(id, name, price, stock, image, barcode, is_available, parent_id)')
+          .select('id, name, price, stock, image, barcode, is_available, category_id, parent_id, categories(name), variants:products!parent_id(id, name, price, stock, image, barcode, is_available, parent_id)')
           .order('created_at', { ascending: false })
           .limit(20);
 
-        const isBarcode = /^\d+$/.test(query) && query.length > 3;
-
         if (isBarcode) {
-          supabaseQuery = supabaseQuery.eq('barcode', query);
+          baseQuery = baseQuery.eq('barcode', query);
         } else {
-          supabaseQuery = supabaseQuery.ilike('name', `%${query}%`);
+          baseQuery = baseQuery.ilike('name', `%${query}%`);
         }
 
-        const { data, error } = await supabaseQuery;
-
+        const { data: directMatches, error } = await baseQuery;
         if (error) throw error;
 
-        const formattedProducts: Product[] = (data as any)?.map((product: any) => ({
+        let finalData = [...(directMatches || [])];
+
+        // Step 2: If we want to return parents for variants (POS view), fetch parents
+        if (returnParentForVariants && finalData.length > 0) {
+          const variantMatches = finalData.filter((p: any) => p.parent_id !== null);
+          const parentIdsToFetch = [...new Set(variantMatches.map((v: any) => v.parent_id))];
+
+          if (parentIdsToFetch.length > 0) {
+            const { data: parentsData, error: parentsError } = await supabase
+              .from('products')
+              .select('id, name, price, stock, image, barcode, is_available, category_id, parent_id, categories(name), variants:products!parent_id(id, name, price, stock, image, barcode, is_available, parent_id)')
+              .in('id', parentIdsToFetch);
+
+            if (!parentsError && parentsData) {
+              // Remove the variants from finalData, and add their parents
+              finalData = finalData.filter((p: any) => p.parent_id === null); // Keep only direct parent matches
+
+              // Add fetched parents, avoiding duplicates
+              parentsData.forEach(parent => {
+                if (!finalData.some((p: any) => p.id === (parent as any).id)) {
+                  finalData.push(parent as any);
+                }
+              });
+            }
+          }
+        }
+
+        const formattedProducts: Product[] = (finalData as any)?.map((product: any) => ({
           id: product.id,
           name: product.name,
           price: product.price,

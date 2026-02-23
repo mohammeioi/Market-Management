@@ -2,14 +2,17 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2, ArrowRight, Bell, Copy } from "lucide-react";
+import { Plus, Edit, Package, RefreshCw, Search, Loader2, Eye, EyeOff, Upload, Trash2, ArrowRight, Bell, Copy, Link2, Check, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseProductStore } from "@/stores/useSupabaseProductStore";
 import { ProductDialog } from "./ProductDialog";
 import { Product } from "@/types/pos";
 import { formatCurrency } from "@/lib/currency";
 import * as XLSX from "xlsx";
 import { useNotificationStore } from "@/stores/useNotificationStore";
+import { CategoryManagementDialog } from "./CategoryManagementDialog";
 import { toast } from "sonner";
+import { FolderSync } from "lucide-react";
 
 function NotificationTokenDisplay() {
   const { pushToken } = useNotificationStore();
@@ -41,13 +44,27 @@ function NotificationTokenDisplay() {
 }
 
 export function ProductManagement() {
-  const { products, toggleProductAvailability, fetchProductsByCategory, addProductsBatch, searchProducts, deleteProduct, loading, error, hasMore } = useSupabaseProductStore();
+  const { products, toggleProductAvailability, fetchProductsByCategory, addProductsBatch, searchProducts, deleteProduct, batchAssignCategory, loading, error, hasMore } = useSupabaseProductStore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(0);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
+
+  // Multi-select for batch variant assignment
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBatchParentPicker, setShowBatchParentPicker] = useState(false);
+  const [batchParentSearch, setBatchParentSearch] = useState("");
+  const [batchParentOptions, setBatchParentOptions] = useState<{ id: string; name: string }[]>([]);
+
+  // Batch Category Assignment
+  const [showBatchCategoryPicker, setShowBatchCategoryPicker] = useState(false);
+  const [batchCategorySearch, setBatchCategorySearch] = useState("");
+  const [batchCategoryOptions, setBatchCategoryOptions] = useState<{ id: string; name: string }[]>([]);
+
+  // Category Management Dialog
+  const [showCategoryManagement, setShowCategoryManagement] = useState(false);
 
   // Ref for infinite scroll sentinel
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -60,7 +77,7 @@ export function ProductManagement() {
     if (!trimmed) return; // handled by initial fetch / refresh
 
     const timer = setTimeout(() => {
-      searchProducts(trimmed);
+      searchProducts(trimmed, false);
     }, 400);
 
     return () => clearTimeout(timer);
@@ -140,6 +157,56 @@ export function ProductManagement() {
       await deleteProduct(product.id);
     }
   }, [deleteProduct]);
+
+  // Toggle product selection
+  const toggleSelect = useCallback((productId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }, []);
+
+  // Batch search parent products
+  useEffect(() => {
+    if (!showBatchParentPicker) return;
+    const timer = setTimeout(async () => {
+      let query = supabase
+        .from('products')
+        .select('id, name')
+        .is('parent_id', null)
+        .order('name', { ascending: true })
+        .limit(15);
+      if (batchParentSearch.trim()) {
+        query = query.ilike('name', `%${batchParentSearch}%`);
+      }
+      const { data } = await query;
+      if (data) setBatchParentOptions(data.filter(p => !selectedIds.has(p.id)));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [batchParentSearch, showBatchParentPicker, selectedIds]);
+
+  // Batch assign selected products as variants of a parent
+  const handleBatchAssign = async (parentId: string) => {
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase
+        .from('products')
+        .update({ parent_id: parentId } as any)
+        .in('id', ids);
+      if (error) throw error;
+      toast.success(`تم تعيين ${ids.length} منتج كتنويعات بنجاح!`);
+      setSelectedIds(new Set());
+      setShowBatchParentPicker(false);
+      setBatchParentSearch("");
+      setPage(0);
+      fetchProductsByCategory(null, 0);
+    } catch (err) {
+      console.error('Batch assign error:', err);
+      toast.error('حدث خطأ أثناء تعيين التنويعات');
+    }
+  };
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -239,6 +306,45 @@ export function ProductManagement() {
     }
   };
 
+  // Category search effect for batch assignment
+  useEffect(() => {
+    if (!batchCategorySearch.trim() && showBatchCategoryPicker) {
+      setBatchCategoryOptions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      let query = supabase
+        .from('categories')
+        .select('id, name')
+        .order('name', { ascending: true })
+        .limit(10);
+
+      if (batchCategorySearch.trim()) {
+        query = query.ilike('name', `%${batchCategorySearch}%`);
+      }
+
+      const { data } = await query;
+      if (data) setBatchCategoryOptions(data);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [batchCategorySearch, showBatchCategoryPicker]);
+
+  const handleBatchCategoryAssign = async (categoryName: string) => {
+    try {
+      const ids = Array.from(selectedIds);
+      await batchAssignCategory(ids, categoryName);
+      toast.success(`تم نقل ${ids.length} منتج إلى فئة "${categoryName}" بنجاح!`);
+      setSelectedIds(new Set());
+      setShowBatchCategoryPicker(false);
+      setBatchCategorySearch("");
+      setPage(0);
+      fetchProductsByCategory(null, 0); // Refresh products
+    } catch (error) {
+      toast.error('حدث خطأ أثناء نقل المنتجات');
+    }
+  };
+
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
@@ -270,18 +376,23 @@ export function ProductManagement() {
         </div>
 
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Button onClick={handleAdd} className="gap-2 bg-gray-900 hover:bg-black text-white px-5 rounded-xl shadow-lg shadow-gray-200">
-            <Plus size={18} />
-            إضافة منتج
-          </Button>
-          <Button onClick={handleImportClick} variant="outline" className="gap-2 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl px-4">
-            {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-            استيراد من ملف
-          </Button>
-          <Button onClick={handleRefresh} variant="ghost" className="gap-2 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-xl px-3" disabled={loading || importing}>
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-            تحديث
-          </Button>
+          <div className="flex flex-row flex-wrap justify-end gap-2 sm:gap-3 w-full">
+            <Button onClick={() => setShowCategoryManagement(true)} variant="outline" className="gap-2 bg-white text-gray-700 hover:bg-gray-50 flex-none h-10 px-3 sm:px-4">
+              <FolderSync size={20} />
+              <span className="hidden sm:inline">إدارة الفئات</span>
+            </Button>
+            <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="gap-2 bg-white text-gray-700 hover:bg-gray-50 flex-none h-10 px-3 sm:px-4">
+              <Upload size={20} />
+              <span className="hidden sm:inline">استيراد</span>
+            </Button>
+            <Button onClick={handleRefresh} variant="outline" className="px-3 bg-white text-gray-700 hover:bg-gray-50 h-10">
+              <RefreshCw size={20} className="text-gray-600" />
+            </Button>
+            <Button onClick={handleAdd} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white flex-none h-10 px-3 sm:px-4">
+              <Plus size={20} />
+              <span className="hidden sm:inline">إضافة منتج</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -348,11 +459,24 @@ export function ProductManagement() {
               className={`
                 group relative bg-white rounded-xl overflow-hidden
                 shadow-[0_2px_15px_-4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_25px_-8px_rgba(0,0,0,0.2)]
-                transition-all duration-300 border border-gray-100
+                transition-all duration-300 border-2
                 flex flex-col
+                ${selectedIds.has(product.id) ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-100'}
                 ${product.isAvailable === false ? 'opacity-75 grayscale-[0.5]' : ''}
               `}
             >
+              {/* Selection Checkbox */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); toggleSelect(product.id); }}
+                className={`absolute top-3 left-3 z-20 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all
+                  ${selectedIds.has(product.id)
+                    ? 'bg-blue-500 border-blue-500 text-white'
+                    : 'bg-white/80 border-gray-300 text-transparent hover:border-blue-400'
+                  }`}
+              >
+                <Check size={14} />
+              </button>
               {/* Image Section - Floating effect with Ambient Glow */}
               <div className="relative pt-6 px-6 pb-2 flex justify-center overflow-hidden">
 
@@ -465,10 +589,141 @@ export function ProductManagement() {
         </div>
       )}
 
+      {/* Floating Action Bar for selected items */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[999] bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-4">
+          <span className="text-sm font-medium">{selectedIds.size} منتج محدد</span>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2 rounded-xl bg-gray-700 hover:bg-gray-600 border-none"
+            onClick={() => setShowBatchCategoryPicker(true)}
+          >
+            <FolderSync size={16} />
+            نقل إلى فئة
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2 rounded-xl"
+            onClick={() => setShowBatchParentPicker(true)}
+          >
+            <Link2 size={16} />
+            تعيين كتنويعات
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-white hover:text-red-300 hover:bg-white/10 rounded-xl px-2"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            <X size={16} />
+          </Button>
+        </div>
+      )}
+
+      {/* Batch Parent Picker Dialog */}
+      {showBatchParentPicker && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBatchParentPicker(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-right">اختر المنتج الأب</h3>
+            <p className="text-sm text-gray-500 text-right">سيتم تعيين {selectedIds.size} منتج كتنويعات للمنتج اللي تختاره</p>
+            <Input
+              value={batchParentSearch}
+              onChange={(e) => setBatchParentSearch(e.target.value)}
+              placeholder="ابحث عن المنتج الرئيسي..."
+              className="text-right"
+              autoFocus
+            />
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              {batchParentOptions.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="w-full text-right px-4 py-3 rounded-lg hover:bg-blue-50 text-sm transition-colors flex items-center justify-between"
+                  onClick={() => handleBatchAssign(p.id)}
+                >
+                  <Link2 size={14} className="text-gray-400" />
+                  <span>{p.name}</span>
+                </button>
+              ))}
+              {batchParentOptions.length === 0 && (
+                <div className="text-center text-gray-400 py-4 text-sm">لا توجد نتائج</div>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button variant="ghost" onClick={() => setShowBatchParentPicker(false)}>إلغاء</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ProductDialog
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         product={editingProduct}
+      />
+
+      {/* Batch Category Picker Modal */}
+      {showBatchCategoryPicker && (
+        <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBatchCategoryPicker(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-right">نقل المنتجات إلى فئة</h3>
+            <p className="text-sm text-gray-500 text-right">سيتم نقل {selectedIds.size} منتج إلى الفئة التي تختارها أو تكتبها.</p>
+
+            <div className="space-y-2">
+              <Input
+                value={batchCategorySearch}
+                onChange={(e) => setBatchCategorySearch(e.target.value)}
+                placeholder="ابحث أو اكتب اسم الفئة الجديدة..."
+                className="text-right"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && batchCategorySearch.trim()) {
+                    handleBatchCategoryAssign(batchCategorySearch.trim());
+                  }
+                }}
+              />
+              {batchCategorySearch.trim() && !batchCategoryOptions.some(c => c.name === batchCategorySearch.trim()) && (
+                <button
+                  type="button"
+                  className="w-full text-right px-4 py-3 rounded-lg bg-green-50 text-green-700 text-sm font-medium hover:bg-green-100 transition-colors flex items-center justify-between"
+                  onClick={() => handleBatchCategoryAssign(batchCategorySearch.trim())}
+                >
+                  <Plus size={14} className="text-green-500" />
+                  <span>إضافة فئة جديدة: "{batchCategorySearch}"</span>
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              {batchCategoryOptions.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="w-full text-right px-4 py-3 rounded-lg hover:bg-blue-50 text-sm transition-colors flex items-center justify-between group"
+                  onClick={() => handleBatchCategoryAssign(c.name)}
+                >
+                  <FolderSync size={14} className="text-gray-400 group-hover:text-blue-500" />
+                  <span>{c.name}</span>
+                </button>
+              ))}
+              {batchCategoryOptions.length === 0 && !batchCategorySearch.trim() && (
+                <div className="text-center text-gray-400 py-4 text-sm">اكتب للبحث عن فئة</div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-gray-100">
+              <Button variant="ghost" onClick={() => setShowBatchCategoryPicker(false)}>إلغاء</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Management Dialog */}
+      <CategoryManagementDialog
+        open={showCategoryManagement}
+        onOpenChange={setShowCategoryManagement}
       />
     </div>
   );

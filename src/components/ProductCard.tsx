@@ -127,7 +127,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </p>
           {hasVariants ? (
             <span className="text-[10px] sm:text-xs font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full mt-0.5 border border-gray-100 shadow-sm line-clamp-1 max-w-[90%]">
-              {product.name}
+              {product.category}
             </span>
           ) : (
             <div className="h-[20px] sm:h-[24px] mt-0.5"></div>

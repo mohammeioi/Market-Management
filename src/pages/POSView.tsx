@@ -90,7 +90,7 @@ export function POSView() {
     () =>
       debounce((query: string) => {
         if (query.trim()) {
-          searchProducts(query);
+          searchProducts(query, false);
           setSelectedCategory(null);
           setPage(0);
         } else {
@@ -262,7 +262,7 @@ export function POSView() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {products
-              .filter(p => !p.parent_id) // Only show top-level products securely
+              .filter(p => searchTerm.trim() ? true : !p.parent_id) // Show all during search, only parents otherwise
               .map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
