@@ -1,72 +1,170 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { create as createJWT, encode as encodeBase64 } from "https://deno.land/x/djwt@v2.8/mod.ts"
+import { create as createJWT } from "https://deno.land/x/djwt@v2.8/mod.ts"
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ""
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ""
-const FIREBASE_SERVICE_ACCOUNT = JSON.parse(Deno.env.get('FIREBASE_SERVICE_ACCOUNT') || "{}")
+
+// Try multiple secret names for compatibility
+const FIREBASE_SERVICE_ACCOUNT = JSON.parse(
+    Deno.env.get('FIREBASE_SERVICE_ACCOUNT') ||
+    Deno.env.get('FIREBASE_SERVICE_ACCOUNT2') ||
+    Deno.env.get('FCM_SERVICE_ACCOUNT') ||
+    "{}"
+)
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+console.log("Push Notification Function Initialized")
+console.log("Firebase project:", FIREBASE_SERVICE_ACCOUNT.project_id || 'NOT SET')
 
 serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+    }
+
     try {
         const payload = await req.json()
         console.log('Notification Payload:', payload)
 
-        const { record } = payload
+        const { record, old_record, type } = payload
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-
-        // 2. Get Admins
-        const { data: admins } = await supabase
-            .from('profiles')
-            .select('user_id')
-            .eq('role', 'admin')
-            .eq('is_clocked_in', true)
-
-        const adminIds = admins?.map(a => a.user_id) || []
-
-        // 3. Get Tokens
-        const { data: tokens } = await supabase
-            .from('user_fcm_tokens')
-            .select('token')
-            .in('user_id', adminIds)
-
-        const fcmTokens = [...new Set(tokens?.map(t => t.token) || [])]
-
-        if (fcmTokens.length === 0) {
-            return new Response(JSON.stringify({ message: 'No tokens found' }), { status: 200 })
+        if (!record) {
+            return new Response(JSON.stringify({ message: 'No record found' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+            })
         }
 
-        // 4. Get Access Token for FCM
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         const accessToken = await getAccessToken(FIREBASE_SERVICE_ACCOUNT)
 
-        // 5. Send Notifications
-        const results = await Promise.all(fcmTokens.map(async (token) => {
-            const notificationPayload = {
-                title: `طلب جديد! #${record.id.slice(0, 8)}`,
-                body: `طلب جديد من ${record.customer_name} بقيمة ${record.total_amount}`,
+        // --- NEW ORDER (INSERT) OR UPDATED ORDER WITH MORE ITEMS -> Notify Admin ---
+        const isNewOrder = !type || type === 'INSERT';
+        const isOrderUpdatedWithMoreItems = type === 'UPDATE' && old_record && record.total_amount > old_record.total_amount;
+
+        if (isNewOrder || isOrderUpdatedWithMoreItems) {
+            const titlePrefix = isNewOrder ? 'طلب جديد!' : 'تعديل على الطلب!';
+            const bodyPrefix = isNewOrder ? 'طلب جديد من' : 'تم إضافة منتجات لطلب';
+
+            console.log(`${isNewOrder ? 'New order created' : 'Order updated'}: ${record.id}, notifying admins`)
+
+            const { data: admins } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .eq('role', 'admin')
+                .eq('is_clocked_in', true)
+
+            const adminIds = admins?.map(a => a.user_id) || []
+
+            if (adminIds.length === 0) {
+                return new Response(JSON.stringify({ message: 'No admins clocked in' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 200
+                })
+            }
+
+            const { data: tokens } = await supabase
+                .from('user_fcm_tokens')
+                .select('token')
+                .in('user_id', adminIds)
+
+            const fcmTokens = [...new Set(tokens?.map(t => t.token) || [])]
+
+            if (fcmTokens.length === 0) {
+                return new Response(JSON.stringify({ message: 'No admin tokens found' }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 200
+                })
+            }
+
+            const results = await Promise.all(fcmTokens.map(async (token) => {
+                const notificationPayload = {
+                    title: `${titlePrefix} #${(record.id || '').slice(0, 8)}`,
+                    body: `${bodyPrefix} ${record.customer_name || 'عميل'}، المجموع الجديد: ${record.total_amount || 0}`,
+                    data: {
+                        type: isNewOrder ? 'new_order' : 'order_updated',
+                        order_id: record.id || '',
+                        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                    }
+                }
+                return sendFCM(accessToken, FIREBASE_SERVICE_ACCOUNT.project_id, token, notificationPayload)
+            }))
+
+            return new Response(JSON.stringify({ success: true, type: 'admin_notification', sent_to: fcmTokens.length, results }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+            })
+        }
+
+        return new Response(JSON.stringify({ message: 'Ignored: Not a new order' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+        })
+
+    } catch (error) {
+        console.error('Error in push-notification function:', error)
+        return new Response(JSON.stringify({ error: error.message }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500
+        })
+    }
+})
+
+async function sendFCM(accessToken: string, projectId: string, token: string, payload: { title: string, body: string, data: any }) {
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            message: {
+                token: token,
+                notification: {
+                    title: payload.title,
+                    body: payload.body,
+                },
                 data: {
-                    type: 'new_order',
-                    order_id: record.id || '',
-                    click_action: 'FLUTTER_NOTIFICATION_CLICK',
+                    ...payload.data,
+                    title: payload.title,
+                    body: payload.body,
                 },
                 android: {
-                    priority: "high",
+                    priority: "HIGH",
+                    collapse_key: payload.data?.order_id || Date.now().toString(),
                     notification: {
-                        channel_id: "default",
-                        icon: "ic_notification", // Use shopping cart icon
+                        title: payload.title,
+                        body: payload.body,
+                        sound: "notification_sound",
+                        channel_id: "orders_channel",
+                        icon: "ic_notification",
                         click_action: "FCM_PLUGIN_ACTIVITY",
+                        default_vibrate_timings: true,
+                        default_light_settings: true,
+                        visibility: "PUBLIC",
+                        tag: payload.data?.order_id || Date.now().toString(),
+                    }
+                },
+                apns: {
+                    payload: {
+                        aps: {
+                            sound: "notification_sound.mp3",
+                            badge: 1,
+                            "content-available": 1,
+                        }
                     }
                 }
             }
-            return sendFCM(accessToken, FIREBASE_SERVICE_ACCOUNT.project_id, token, notificationPayload)
-        }))
-
-        return new Response(JSON.stringify({ success: true, results }), { status: 200 })
-    } catch (error) {
-        console.error('Error in notification function:', error)
-        return new Response(JSON.stringify({ error: error.message }), { status: 500 })
-    }
-})
+        })
+    })
+    const result = await res.json()
+    console.log('FCM send result:', JSON.stringify(result))
+    return result
+}
 
 async function getAccessToken(serviceAccount: any) {
     const jwt = await createJWT(
@@ -92,18 +190,21 @@ async function getAccessToken(serviceAccount: any) {
     })
 
     const data = await res.json()
+    if (!data.access_token) {
+        console.error('Failed to get access token:', JSON.stringify(data))
+        throw new Error('Failed to get Firebase access token')
+    }
     return data.access_token
 }
 
 async function importKey(pem: string) {
-    // Remove header, footer, and all whitespace/escape characters
     const pemContents = pem
         .replace("-----BEGIN PRIVATE KEY-----", "")
         .replace("-----END PRIVATE KEY-----", "")
-        .replace(/\\n/g, "")   // Handle literal \n strings
-        .replace(/\n/g, "")    // Handle actual newlines
-        .replace(/\r/g, "")    // Handle carriage returns
-        .replace(/\s/g, "")    // Handle any remaining whitespace
+        .replace(/\\n/g, "")
+        .replace(/\n/g, "")
+        .replace(/\r/g, "")
+        .replace(/\s/g, "")
         .trim()
 
     const binaryDerString = atob(pemContents)
@@ -122,47 +223,4 @@ async function importKey(pem: string) {
         false,
         ["sign"]
     )
-}
-
-async function sendFCM(accessToken: string, projectId: string, token: string, payload: { title: string, body: string, data: any, android?: any }) {
-    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            message: {
-                token: token,
-                notification: {
-                    title: payload.title,
-                    body: payload.body,
-                },
-                data: payload.data,
-                android: payload.android || {
-                    priority: "high",
-                    notification: {
-                        sound: "default",
-                        channel_id: "default",
-                        click_action: "FCM_PLUGIN_ACTIVITY",
-                        default_vibrate_timings: true,
-                        default_light_settings: true,
-                        visibility: "PUBLIC",
-                    }
-                },
-                apns: {
-                    payload: {
-                        aps: {
-                            sound: "default",
-                            badge: 1,
-                            "content-available": 1,
-                        }
-                    }
-                }
-            }
-        })
-    })
-    const result = await res.json()
-    console.log('FCM send result:', JSON.stringify(result))
-    return result
 }

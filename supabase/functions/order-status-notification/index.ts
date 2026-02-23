@@ -80,11 +80,15 @@ serve(async (req) => {
                             body: `حالة طلبك تغيرت إلى: ${statusLabel}`,
                         },
                         android: {
-                            priority: "high",
+                            priority: "HIGH",
+                            collapse_key: order_id || Date.now().toString(),
                             notification: {
+                                title: `📦 تحديث طلبك #${orderNum}`,
+                                body: `حالة طلبك تغيرت إلى: ${statusLabel}`,
                                 sound: "notification_sound.mp3",
                                 channel_id: "orders_channel",
                                 click_action: "FCM_PLUGIN_ACTIVITY",
+                                tag: order_id || Date.now().toString(),
                             }
                         }
                     }
