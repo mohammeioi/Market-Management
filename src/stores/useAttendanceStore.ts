@@ -8,6 +8,7 @@ export interface Profile {
     email: string | null;
     role: string | null;
     pin_code: string | null;
+    is_clocked_in?: boolean | null;
 }
 
 interface AttendanceState {
@@ -38,26 +39,27 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
                 return;
             }
 
-            // Check localStorage for real attendance status
+            // Sync with Supabase Database
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('is_clocked_in')
+                .eq('user_id', user.id)
+                .single();
+
+            const isClockedInDb = profile?.is_clocked_in === true;
+
+            // Still check LocalStorage to clean up if needed
             const attendanceKey = `attendance_${user.id}`;
             const attendanceData = localStorage.getItem(attendanceKey);
-            
-            if (attendanceData) {
-                const { clockedIn, clockInTime } = JSON.parse(attendanceData);
-                // Check if clocked in today
-                const today = new Date().toDateString();
-                const clockInDate = new Date(clockInTime).toDateString();
-                
-                if (clockedIn && today === clockInDate) {
-                    set({ isClockedIn: true });
-                    console.log('User is clocked in today:', { userId: user.id, clockInTime });
-                } else {
-                    set({ isClockedIn: false });
-                    // Clear old attendance data
-                    localStorage.removeItem(attendanceKey);
+
+            if (isClockedInDb) {
+                set({ isClockedIn: true });
+                if (!attendanceData) {
+                    localStorage.setItem(attendanceKey, JSON.stringify({ clockedIn: true, clockInTime: new Date().toISOString(), userId: user.id }));
                 }
             } else {
                 set({ isClockedIn: false });
+                localStorage.removeItem(attendanceKey);
             }
         } catch (error) {
             console.error('Error checking status:', error);
@@ -89,6 +91,14 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
                 return { success: false, error: 'User not authenticated' };
             }
 
+            // Update Supabase profile
+            const { error } = await supabase
+                .from('profiles')
+                .update({ is_clocked_in: true })
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
             // Store real attendance in localStorage
             const attendanceKey = `attendance_${user.id}`;
             const clockInTime = new Date().toISOString();
@@ -97,11 +107,13 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
                 clockInTime: clockInTime,
                 userId: user.id
             };
-            
+
             localStorage.setItem(attendanceKey, JSON.stringify(attendanceData));
             set({ isClockedIn: true });
-            
+
             console.log('User clocked in successfully:', { userId: user.id, clockInTime });
+            // Also refresh profiles to update UI
+            get().fetchProfiles();
             return { success: true };
         } catch (error) {
             console.error('Clock in error:', error);
@@ -116,10 +128,18 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
                 return { success: false, error: 'User not authenticated' };
             }
 
+            // Update Supabase profile
+            const { error } = await supabase
+                .from('profiles')
+                .update({ is_clocked_in: false })
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+
             // Remove from localStorage for real clock out
             const attendanceKey = `attendance_${user.id}`;
             const attendanceData = localStorage.getItem(attendanceKey);
-            
+
             if (attendanceData) {
                 const parsedData = JSON.parse(attendanceData);
                 // Update with clock out time
@@ -128,17 +148,18 @@ export const useAttendanceStore = create<AttendanceState>((set, get) => ({
                     clockedIn: false,
                     clockOutTime: new Date().toISOString()
                 };
-                
+
                 // Store clock out record (for attendance tracking)
                 localStorage.setItem(`${attendanceKey}_history`, JSON.stringify(updatedData));
-                
+
                 // Remove current attendance
                 localStorage.removeItem(attendanceKey);
             }
-            
+
             set({ isClockedIn: false });
             console.log('User clocked out successfully:', { userId: user.id, clockOutTime: new Date().toISOString() });
-            
+            // Also refresh profiles to update UI
+            get().fetchProfiles();
             return { success: true };
         } catch (error) {
             console.error('Clock out error:', error);

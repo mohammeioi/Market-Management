@@ -24,7 +24,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     price: "",
     category: "",
     image: "",
-    barcode: ""
+    barcode: "",
+    parent_id: "none"
   });
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -45,7 +46,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         price: product.price.toString(),
         category: product.category,
         image: product.image,
-        barcode: product.barcode || ""
+        barcode: product.barcode || "",
+        parent_id: product.parent_id || "none"
       });
       setIsAddingNewCategory(false);
       setNewCategoryName("");
@@ -55,7 +57,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
         price: "",
         category: "",
         image: "/placeholder.svg",
-        barcode: ""
+        barcode: "",
+        parent_id: "none"
       });
       setIsAddingNewCategory(false);
       setNewCategoryName("");
@@ -80,7 +83,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
       category: formData.category,
       stock: 100, // قيمة افتراضية للمخزون
       image: formData.image || "/placeholder.svg",
-      barcode: formData.barcode
+      barcode: formData.barcode,
+      parent_id: formData.parent_id === "none" ? null : formData.parent_id
     };
 
     if (product) {
@@ -259,6 +263,31 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 <Camera size={16} />
               </Button>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="parent_id" className="text-right block">تنويع لمنتج آخر (اختياري)</Label>
+            <Select
+              value={formData.parent_id}
+              onValueChange={(value) => handleInputChange("parent_id", value)}
+            >
+              <SelectTrigger className="w-full text-right">
+                <SelectValue placeholder="اختر المنتج الرئيسي" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">بدون (منتج رئيسي)</SelectItem>
+                {useSupabaseProductStore.getState().products
+                  .filter(p => !p.parent_id && p.id !== product?.id) // Only show top-level products that aren't this product
+                  .map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground text-right mt-1">
+              إذا تم اختيار منتج، سيظهر هذا المنتج كخيار فرعي داخله واجهة الكاشير (مثلاً كنكهة إضافية).
+            </p>
           </div>
 
           <div className="space-y-2">

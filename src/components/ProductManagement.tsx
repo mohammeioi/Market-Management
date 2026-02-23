@@ -381,12 +381,24 @@ export function ProductManagement() {
 
               {/* Content Section */}
               <div className="p-5 text-center flex-1 flex flex-col items-center">
-                <p className="text-xs font-bold tracking-widest text-gray-400 uppercase mb-2">
-                  {product.category}
-                </p>
+                <div className="flex gap-2 mb-2 items-center flex-wrap justify-center">
+                  <p className="text-xs font-bold tracking-widest text-gray-400 uppercase">
+                    {product.category}
+                  </p>
+                  {product.parent_id && (
+                    <Badge variant="secondary" className="text-[10px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-100 px-1.5 py-0">
+                      تنويع
+                    </Badge>
+                  )}
+                </div>
 
                 <h3 className="font-bold text-gray-900 text-sm mb-3 min-h-[2.5rem] line-clamp-2 leading-relaxed">
                   {product.name}
+                  {product.parent_id && (
+                    <span className="block text-xs font-normal text-muted-foreground mt-1">
+                      تابع لمنتج آخر
+                    </span>
+                  )}
                 </h3>
 
                 <p className="text-xs text-gray-400 line-clamp-2 mb-4 px-2">

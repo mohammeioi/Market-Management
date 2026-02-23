@@ -9,112 +9,115 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { Order } from '@/types/order';
-import { Clock, Phone, Mail, Package, User, Trash2, MessageCircle, CheckCircle, Fingerprint, LogOut } from 'lucide-react';
+import { Clock, Phone, Mail, Package, User, Trash2, MessageCircle, CheckCircle, Fingerprint, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAttendanceStore } from '@/stores/useAttendanceStore';
 
-// Helper component for rendering an order item badge with image preview dialog and checklist
-const OrderItemBadge = ({ item }: { item: any }) => {
-  const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
-    // Initialize checklist with all items unchecked
-    const initial: Record<string, boolean> = {};
-    if (item.quantity > 1) {
-      for (let i = 1; i <= item.quantity; i++) {
-        initial[`item_${i}`] = false;
-      }
-    }
-    return initial;
-  });
+// Helper component for rendering an expandable order items list
+const OrderItemsAccordion = ({ items, orderId }: { items: any[], orderId: string }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
 
-  const toggleCheck = (key: string) => {
+  const toggleCheck = (index: number) => {
     setChecklist(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [`${orderId}_${index}`]: !prev[`${orderId}_${index}`]
     }));
   };
 
-  const checkedCount = Object.values(checklist).filter(Boolean).length;
-  const isFullyChecked = item.quantity <= 1 ? true : checkedCount === item.quantity;
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const checkedItems = Object.values(checklist).filter(Boolean).length;
+  const isFullyChecked = checkedItems === items.length && items.length > 0;
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-600 font-medium bg-white hover:bg-gray-50 transition-colors relative">
-          {item.product?.name} × {item.quantity}
-          {item.quantity > 1 && (
-            <span className={cn(
-              "absolute -top-1 -right-1 w-4 h-4 rounded-full text-xs font-bold",
-              isFullyChecked ? "bg-green-500 text-white" : "bg-orange-500 text-white"
-            )}>
-              {checkedCount}/{item.quantity}
-            </span>
-          )}
-        </button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            {item.product?.name}
-            {item.quantity > 1 && (
-              <span className={cn(
-                "px-2 py-1 rounded-full text-xs font-bold",
-                isFullyChecked ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-              )}>
-                {checkedCount}/{item.quantity} تم التحقق
-              </span>
-            )}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col items-center gap-4 py-4">
-          {item.product?.image ? (
-            <img
-              src={item.product.image}
-              alt={item.product.name}
-              className="w-full max-h-48 object-contain rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => {
-                // Open image in new tab for better viewing
-                if (item.product.image) {
-                  window.open(item.product.image, '_blank');
-                }
-              }}
-            />
+    <div className={cn(
+      "w-full mt-2 border rounded-xl overflow-hidden transition-all",
+      isFullyChecked ? "border-green-200 bg-green-50/10" : "border-blue-100 bg-white"
+    )}>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={cn(
+          "w-full px-4 py-3 flex items-center justify-between text-sm font-bold transition-colors",
+          isFullyChecked ? "bg-green-50 text-green-700 hover:bg-green-100" : "text-blue-700 bg-blue-50/50 hover:bg-blue-50"
+        )}
+      >
+        <span className="flex items-center gap-2">
+          {isFullyChecked ? (
+            <CheckCircle size={18} className="text-green-500" />
           ) : (
-            <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
-              <Package size={48} />
-            </div>
+            <Package size={16} className={isExpanded ? "text-blue-600" : "text-blue-400"} />
           )}
-          
-          {/* Checklist for multiple quantities */}
-          {item.quantity > 1 && (
-            <div className="w-full space-y-2">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">قائمة التحقق:</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {Array.from({ length: item.quantity }, (_, i) => (
-                  <label key={i + 1} className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={checklist[`item_${i + 1}`] || false}
-                      onChange={() => toggleCheck(`item_${i + 1}`)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-sm font-medium">وحدة {i + 1}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          <div className="text-center space-y-2 w-full">
-            <p className="text-lg font-bold text-blue-600">{formatCurrency(item.unit_price)}</p>
-            <p className="text-sm text-gray-500">الكمية: {item.quantity}</p>
-            <p className="text-lg font-semibold text-green-600">الإجمالي: {formatCurrency(item.total_price)}</p>
-          </div>
+          تفاصيل الطلب ({totalItems} عناصر)
+        </span>
+        <div className="flex items-center gap-3">
+          {checkedItems > 0 && <span className="text-xs font-medium opacity-75">{checkedItems}/{items.length} محزم</span>}
+          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
-      </DialogContent>
-    </Dialog>
+      </button>
+
+      {isExpanded && (
+        <div className="p-1.5 bg-gray-50/50 flex flex-col gap-1.5 border-t border-gray-100/50">
+          {items.map((item, idx) => (
+            <label
+              key={idx}
+              className={cn(
+                "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all bg-white select-none",
+                checklist[`${orderId}_${idx}`] ? "border-green-200 bg-green-50/40 shadow-sm" : "border-gray-100 hover:border-blue-200"
+              )}
+            >
+              <div className="flex items-center justify-center p-0.5">
+                <input
+                  type="checkbox"
+                  checked={checklist[`${orderId}_${idx}`] || false}
+                  onChange={() => toggleCheck(idx)}
+                  className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 shadow-sm transition-all"
+                />
+              </div>
+
+              {item.product?.image ? (
+                <div className="w-8 h-8 rounded-lg bg-white flex-shrink-0 overflow-hidden border border-gray-100 p-0.5 shadow-sm">
+                  <img src={item.product.image} alt={item.product.name} className="w-full h-full object-contain" />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0 border border-gray-100 shadow-sm">
+                  <Package size={14} />
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0 flex items-center justify-between">
+                <div className="flex flex-col">
+                  <p className={cn(
+                    "text-xs font-bold truncate transition-all duration-300",
+                    checklist[`${orderId}_${idx}`] ? "text-gray-500 line-through decoration-2 decoration-green-500/50" : "text-gray-900"
+                  )}>
+                    {item.product?.name}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={cn(
+                      "text-[10px] font-semibold px-1.5 py-0.5 rounded-md transition-colors",
+                      checklist[`${orderId}_${idx}`] ? "bg-green-100/50 text-green-700" : "bg-gray-100 text-gray-600"
+                    )}>
+                      الكمية: {item.quantity}
+                    </span>
+                    {item.quantity > 1 && (
+                      <span className="text-[10px] font-medium text-gray-400">
+                        ({formatCurrency(item.unit_price)} للقطعة)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-blue-600 mr-2 whitespace-nowrap">
+                  {formatCurrency(item.total_price)}
+                </span>
+              </div>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -142,7 +145,7 @@ import { Capacitor } from '@capacitor/core';
 export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string }) {
   // Production mode - real attendance system
   const DEBUG_MODE = false;
-  
+
   const navigate = useNavigate();
   const { orders, loading, fetchOrders, updateOrderStatus, deleteOrder, approveOrder } = useOrderStore();
   const { isClockedIn, clockIn, clockOut, profiles, fetchProfiles, checkStatus, userPin, updatePin } = useAttendanceStore();
@@ -394,7 +397,7 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
           (payload) => {
             console.log('Order change received:', payload);
             fetchOrders();
-            
+
             // Play notification sound for new orders
             if (payload.eventType === 'INSERT') {
               try {
@@ -432,11 +435,28 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
         )
         .subscribe();
 
+      const profilesChannel = supabase
+        .channel('profiles-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles'
+          },
+          (payload) => {
+            console.log('Profile update received:', payload);
+            fetchProfiles();
+          }
+        )
+        .subscribe();
+
       return () => {
         supabase.removeChannel(channel);
+        supabase.removeChannel(profilesChannel);
       };
     }
-  }, [fetchOrders, toast, isClockedIn, DEBUG_MODE]);
+  }, [fetchOrders, fetchProfiles, toast, isClockedIn, DEBUG_MODE]);
 
   const handleStatusChange = async (orderId: string, newStatus: Order['status']) => {
     try {
@@ -645,11 +665,12 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
       <div className="flex items-center gap-3 overflow-x-auto pb-4 scrollbar-hide">
         <div className="flex -space-x-3 space-x-reverse min-h-[50px] items-center px-2">
           {profiles.filter(profile => profile.role === 'admin').map((profile) => {
-            // Check if admin is clocked in via localStorage
+            // Check if admin is clocked in from database or locally
             const attendanceKey = `attendance_${profile.user_id}`;
             const attendanceData = localStorage.getItem(attendanceKey);
-            const isClockedIn = attendanceData ? JSON.parse(attendanceData).clockedIn : false;
-            
+            const isClockedInLocal = attendanceData ? JSON.parse(attendanceData).clockedIn : false;
+            const isClockedIn = profile.is_clocked_in === true || isClockedInLocal;
+
             return (
               <div key={profile.id} className="relative group">
                 <div className={cn(
@@ -749,35 +770,8 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
                   </span>
                 </div>
 
-                {/* Order Items Preview (Skills style) */}
-                <div className="flex flex-wrap gap-2">
-                  {order.order_items.slice(0, 3).map((item, idx) => (
-                    <OrderItemBadge key={idx} item={item} />
-                  ))}
-
-                  {order.order_items.length > 3 && (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-400 font-medium bg-gray-50 hover:bg-gray-100 transition-colors">
-                          +{order.order_items.length - 3} المزيد
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle>تفاصيل الطلب #{order.id.slice(0, 8)}</DialogTitle>
-                        </DialogHeader>
-                        <div className="py-4">
-                          <h4 className="mb-4 text-sm font-medium text-gray-500">المنتجات ({order.order_items.length})</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {order.order_items.map((item, idx) => (
-                              <OrderItemBadge key={idx} item={item} />
-                            ))}
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
+                {/* Order Items Expandable Checklist */}
+                <OrderItemsAccordion items={order.order_items} orderId={order.id} />
 
                 {/* Notes Section */}
                 {order.notes && (

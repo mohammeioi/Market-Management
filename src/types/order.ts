@@ -11,6 +11,7 @@ export interface Order {
   approved_by?: string;
   created_at: string;
   updated_at: string;
+  is_profit_deleted?: boolean;
 }
 
 export interface OrderItem {

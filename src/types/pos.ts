@@ -7,6 +7,8 @@ export interface Product {
   image: string;
   barcode?: string;
   isAvailable?: boolean;
+  parent_id?: string | null;
+  variants?: Product[];
 }
 
 export interface CartItem {

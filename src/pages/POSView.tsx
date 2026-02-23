@@ -260,10 +260,12 @@ export function POSView() {
             <h2 className="font-bold text-xl text-gray-900">المنتجات</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {products
+              .filter(p => !p.parent_id) // Only show top-level products securely
+              .map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
           </div>
 
           {/* Loaders */}

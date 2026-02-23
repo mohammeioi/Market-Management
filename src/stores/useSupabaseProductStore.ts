@@ -86,7 +86,7 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         let supabaseQuery = supabase
           .from('products')
-          .select('id, name, price, stock, image, barcode, is_available, categories(name)')
+          .select('id, name, price, stock, image, barcode, is_available, category_id, parent_id, categories(name), variants:products!public_products_parent_id_fkey(id, name, price, stock, image, barcode, is_available, parent_id)')
           .order('created_at', { ascending: false })
           .limit(20);
 
@@ -110,7 +110,18 @@ export const useSupabaseProductStore = create<ProductStore>(
           stock: product.stock,
           image: product.image || '/placeholder.svg',
           barcode: product.barcode,
-          isAvailable: product.is_available !== false
+          isAvailable: product.is_available !== false,
+          parent_id: product.parent_id,
+          variants: product.variants?.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            price: v.price,
+            stock: v.stock,
+            image: v.image || '/placeholder.svg',
+            barcode: v.barcode,
+            isAvailable: v.is_available !== false,
+            parent_id: v.parent_id
+          })) || []
         })) || [];
 
         set({ products: formattedProducts, loading: false });
@@ -143,7 +154,8 @@ export const useSupabaseProductStore = create<ProductStore>(
 
         let query = supabase
           .from('products')
-          .select('id, name, price, stock, image, barcode, is_available, categories(name)')
+          .select('id, name, price, stock, image, barcode, is_available, parent_id, categories(name), variants:products!parent_id(id, name, price, stock, image, barcode, is_available, parent_id)')
+          .is('parent_id', null)
           .order('created_at', { ascending: false })
           .range(from, to);
 
@@ -163,7 +175,18 @@ export const useSupabaseProductStore = create<ProductStore>(
           stock: product.stock,
           image: product.image || '/placeholder.svg',
           barcode: product.barcode,
-          isAvailable: product.is_available !== false
+          isAvailable: product.is_available !== false,
+          parent_id: product.parent_id,
+          variants: product.variants?.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            price: v.price,
+            stock: v.stock,
+            image: v.image || '/placeholder.svg',
+            barcode: v.barcode,
+            isAvailable: v.is_available !== false,
+            parent_id: v.parent_id
+          })) || []
         })) || [];
 
         // Update cache
@@ -219,9 +242,10 @@ export const useSupabaseProductStore = create<ProductStore>(
             category_id: categoryId,
             stock: productData.stock,
             image: productData.image,
-            barcode: productData.barcode
+            barcode: productData.barcode,
+            parent_id: productData.parent_id
           })
-          .select(`*, categories(name)`)
+          .select(`*, categories(name), variants:products!parent_id(*)`)
           .single();
 
         if (error) throw error;
@@ -239,7 +263,9 @@ export const useSupabaseProductStore = create<ProductStore>(
           category: data.categories?.name || 'غير محدد',
           stock: data.stock,
           image: data.image || '/placeholder.svg',
-          barcode: data.barcode
+          barcode: data.barcode,
+          parent_id: (data as any).parent_id,
+          variants: (data as any).variants || []
         };
 
         set(state => ({
@@ -304,7 +330,8 @@ export const useSupabaseProductStore = create<ProductStore>(
                 category_id: categoryId,
                 stock: productData.stock || 0,
                 image: productData.image || '/placeholder.svg',
-                barcode: productData.barcode
+                barcode: productData.barcode,
+                parent_id: productData.parent_id
               });
 
             if (error) {
@@ -401,7 +428,7 @@ export const useSupabaseProductStore = create<ProductStore>(
           // Fall back to soft delete if FK constraint prevents real delete
           const { error: softDeleteError } = await supabase
             .from('products')
-            .update({ is_deleted: true })
+            .update({ is_available: false }) // Using is_available since is_deleted doesn't exist
             .eq('id', id);
 
           if (softDeleteError) throw softDeleteError;
