@@ -75,6 +75,12 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
 			},
+			boxShadow: {
+				'neu': 'var(--neu-shadow)',
+				'neu-sm': 'var(--neu-sm)',
+				'neu-inset': 'var(--neu-inset)',
+				'neu-pressed': 'var(--neu-pressed)',
+			},
 			keyframes: {
 				'accordion-down': {
 					from: {
