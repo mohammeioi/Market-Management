@@ -30,7 +30,7 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
 
                     <div className="space-y-4 sm:space-y-6">
                         {/* Image */}
-                        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group cursor-pointer" onClick={handleImageClick}>
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-background border-none shadow-neu-inset group cursor-pointer" onClick={handleImageClick}>
                             <img
                                 src={product.image}
                                 alt={product.name}
@@ -38,12 +38,12 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 flex items-center justify-center">
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                    <div className="bg-white rounded-full p-2 shadow-lg">
+                                    <div className="bg-background rounded-full p-2 shadow-neu">
                                         <ZoomIn size={20} className="text-gray-700" />
                                     </div>
                                 </div>
                             </div>
-                            <div className="absolute top-2 left-2 bg-white rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="absolute top-2 left-2 bg-background rounded-full p-1.5 shadow-neu opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                 <Eye size={16} className="text-gray-600" />
                             </div>
                         </div>
@@ -53,12 +53,12 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
                             <div>
                                 <h3 className="text-lg sm:text-2xl font-bold text-gray-900">{product.name}</h3>
                                 <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    <Badge variant="outline" className="flex items-center gap-1 bg-blue-50 border-blue-200 text-blue-700 text-xs sm:text-sm">
+                                    <Badge className="flex items-center gap-1 bg-background shadow-neu-inset border-none text-primary text-xs sm:text-sm">
                                         <Tag size={12} />
                                         {product.category}
                                     </Badge>
                                     {product.barcode && (
-                                        <Badge variant="secondary" className="flex items-center gap-1 bg-gray-50 border-gray-200 text-xs">
+                                        <Badge className="flex items-center gap-1 bg-background shadow-neu-inset border-none text-muted-foreground text-xs">
                                             <Barcode size={12} />
                                             <span className="hidden sm:inline">{product.barcode}</span>
                                             <span className="sm:hidden">{product.barcode.slice(0, 8)}...</span>
@@ -68,13 +68,13 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                                <div className="p-3 sm:p-4 bg-background rounded-2xl shadow-neu-inset border-none">
                                     <div className="text-right">
-                                        <p className="text-xs sm:text-sm text-blue-600 mb-1 font-medium">السعر</p>
-                                        <p className="text-lg sm:text-xl font-bold text-blue-900">{formatCurrency(product.price)}</p>
+                                        <p className="text-xs sm:text-sm text-primary mb-1 font-medium">السعر</p>
+                                        <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(product.price)}</p>
                                     </div>
                                 </div>
-                                <div className="p-3 sm:p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+                                <div className="p-3 sm:p-4 bg-background rounded-2xl shadow-neu-inset border-none">
                                     <div className="text-left">
                                         <p className="text-xs sm:text-sm text-green-600 mb-1 font-medium">المخزون</p>
                                         <div className="flex items-center gap-2 justify-end">
@@ -90,16 +90,16 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
                             <div className="space-y-2 sm:space-y-3">
                                 <p className="font-semibold text-gray-900">الحالة:</p>
                                 <div className="flex gap-2 flex-wrap">
-                                    <Badge variant={product.stock > 0 ? "default" : "destructive"} className="px-2 sm:px-3 py-1 text-xs sm:text-sm">
+                                    <Badge className={`px-2 sm:px-3 py-1 text-xs sm:text-sm bg-background shadow-neu-inset border-none ${product.stock > 0 ? "text-green-600" : "text-red-500"}`}>
                                         {product.stock > 0 ? "✓ متوفر" : "✗ نفذ الكمية"}
                                     </Badge>
                                     {product.isAvailable === false && (
-                                        <Badge variant="destructive" className="px-2 sm:px-3 py-1 text-xs sm:text-sm">
+                                        <Badge className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-background shadow-neu-inset border-none text-red-500">
                                             ⚠ غير متاح للبيع
                                         </Badge>
                                     )}
                                     {product.isAvailable !== false && product.stock > 0 && (
-                                        <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200 px-2 sm:px-3 py-1 text-xs sm:text-sm">
+                                        <Badge className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-background shadow-neu-inset border-none text-green-600">
                                             ✓ متاح للبيع
                                         </Badge>
                                     )}
@@ -108,8 +108,8 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
 
                             {/* Additional Info */}
                             {product.id && (
-                                <div className="p-2 sm:p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                    <p className="text-xs text-gray-500 text-right">
+                                <div className="p-2 sm:p-3 bg-background rounded-2xl shadow-neu-inset border-none mt-4">
+                                    <p className="text-xs text-muted-foreground text-right">
                                         معرف المنتج: <span className="font-mono text-gray-700">{product.id.slice(0, 8)}...</span>
                                     </p>
                                 </div>

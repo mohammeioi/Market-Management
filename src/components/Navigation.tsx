@@ -27,13 +27,13 @@ export function Navigation() {
           .select('role')
           .eq('user_id', user.id)
           .single();
-        
+
         if (!error && data) {
           setUserRole(data.role);
         }
       }
     };
-    
+
     fetchUserRole();
   }, [user]);
 
@@ -51,7 +51,7 @@ export function Navigation() {
 
   return (
     <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
-      <div className="flex items-center justify-center gap-6 bg-white/90 backdrop-blur-md px-8 py-4 rounded-full shadow-2xl border border-white/20">
+      <div className="flex items-center justify-center gap-6 bg-background px-8 py-4 rounded-full shadow-neu border-none">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
@@ -63,19 +63,19 @@ export function Navigation() {
               className={cn(
                 "relative flex items-center justify-center w-12 h-12 rounded-full transition-all duration-300",
                 isActive
-                  ? "bg-black text-white shadow-lg shadow-gray-400 scale-110"
-                  : "text-gray-400 hover:text-black hover:bg-gray-100"
+                  ? "bg-background text-primary shadow-neu-inset scale-95"
+                  : "text-muted-foreground hover:text-foreground hover:shadow-neu"
               )}
             >
               <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
 
               {/* Notification Badge */}
               {item.badge && (
-                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-background animate-pulse" />
               )}
 
               {isActive && (
-                <span className="absolute -bottom-8 text-[10px] font-bold text-black bg-white px-2 py-0.5 rounded-full shadow-sm opacity-0 animate-in fade-in slide-in-from-top-1 hidden">
+                <span className="absolute -bottom-8 text-[10px] font-bold text-foreground bg-background border-none px-2 py-0.5 rounded-full shadow-neu opacity-0 animate-in fade-in slide-in-from-top-1 hidden">
                   {item.label}
                 </span>
               )}

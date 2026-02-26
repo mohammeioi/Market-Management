@@ -341,10 +341,10 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 autoComplete="off"
               />
               {showParentDropdown && (
-                <div className="parent-dropdown absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                <div className="parent-dropdown absolute z-50 w-full mt-1 bg-background border-none rounded-xl shadow-neu max-h-48 overflow-y-auto">
                   <button
                     type="button"
-                    className={`w-full text-right px-3 py-2 hover:bg-gray-100 text-sm ${formData.parent_id === 'none' ? 'bg-blue-50 font-bold' : ''}`}
+                    className={`w-full text-right px-3 py-2 hover:bg-primary/5 hover:text-primary transition-colors text-sm ${formData.parent_id === 'none' ? 'bg-primary/10 font-bold' : ''}`}
                     onClick={() => {
                       handleInputChange("parent_id", "none");
                       setParentSearch("");
@@ -358,7 +358,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                     <button
                       type="button"
                       key={p.id}
-                      className={`w-full text-right px-3 py-2 hover:bg-gray-100 text-sm ${formData.parent_id === p.id ? 'bg-blue-50 font-bold' : ''}`}
+                      className={`w-full text-right px-3 py-2 hover:bg-primary/5 hover:text-primary transition-colors text-sm ${formData.parent_id === p.id ? 'bg-primary/10 font-bold' : ''}`}
                       onClick={() => {
                         handleInputChange("parent_id", p.id);
                         setSelectedParentName(p.name);

@@ -156,7 +156,7 @@ export const DailyProfits = () => {
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <button className="group relative flex items-center gap-4 bg-white hover:bg-green-50 transition-all px-4 py-3 rounded-2xl mb-8 border border-gray-100 hover:border-green-200 shadow-sm hover:shadow-md active:scale-[0.98] w-full sm:w-auto">
+                <button className="group relative flex items-center gap-4 bg-background transition-all px-4 py-3 rounded-[2rem] mb-8 border-none shadow-neu hover:shadow-neu-sm active:shadow-neu-inset w-full sm:w-auto">
                     <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-50 text-green-600 rounded-xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300">
                         <BarChart3 size={24} strokeWidth={2.5} />
                     </div>
@@ -166,14 +166,14 @@ export const DailyProfits = () => {
                             {formatCurrency(todayTotal)}
                         </span>
                     </div>
-                    <div className="absolute left-4 opacity-0 group-hover:opacity-100 transition-opacity text-green-600 bg-white p-1.5 rounded-full shadow-sm">
+                    <div className="absolute left-4 opacity-0 group-hover:opacity-100 transition-opacity text-green-600 bg-background p-1.5 rounded-full shadow-neu">
                         <Receipt size={16} />
                     </div>
                 </button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-gray-50 border-0 shadow-2xl rounded-2xl">
-                <div className="w-full bg-white">
+            <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-background border-none shadow-neu rounded-[2rem]">
+                <div className="w-full bg-background">
                     {/* Today's Profit Header inside Dialog */}
                     <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50/30 border-b border-green-100/50">
                         <div className="flex justify-center mb-4">
@@ -189,7 +189,7 @@ export const DailyProfits = () => {
                         </div>
 
                         {/* Grand Total */}
-                        <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-green-100 shadow-sm">
+                        <div className="flex items-center justify-between bg-background p-4 rounded-xl border-none shadow-neu-inset">
                             <div className="flex items-center gap-2 text-gray-700">
                                 <TrendingUp size={20} className="text-blue-500" />
                                 <span className="font-bold">المجموع الكلي:</span>
@@ -203,7 +203,7 @@ export const DailyProfits = () => {
                     {/* History Section Toggle */}
                     <button
                         onClick={() => setShowHistory(!showHistory)}
-                        className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors border-b border-gray-100"
+                        className="w-full flex items-center justify-between p-4 bg-background transition-all border-none"
                     >
                         <div className="flex items-center gap-2 text-gray-700 font-bold">
                             <History size={20} className="text-blue-500" />
@@ -250,7 +250,7 @@ export const DailyProfits = () => {
                                     </div>
 
                                     {sortedHistoryDates.map((date) => (
-                                        <div key={date} className="flex justify-between items-center bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm">
+                                        <div key={date} className="flex justify-between items-center bg-background p-3.5 rounded-xl border-none shadow-neu">
                                             <span className="font-bold text-gray-600 text-sm" dir="ltr">{date}</span>
                                             <span className="font-black text-gray-900">{formatCurrency(groupedHistory[date])}</span>
                                         </div>

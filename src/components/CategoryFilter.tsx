@@ -29,8 +29,8 @@ export function CategoryFilter({
         className={cn(
           "flex-shrink-0 w-24 h-24 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 transition-all duration-300",
           selectedCategory === null
-            ? "bg-black text-white shadow-xl shadow-gray-200 scale-105"
-            : "bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+            ? "bg-primary text-primary-foreground shadow-neu-inset scale-95"
+            : "bg-background text-muted-foreground hover:text-foreground shadow-neu hover:shadow-neu-sm"
         )}
       >
         <Lamp size={28} strokeWidth={2} />
@@ -45,8 +45,8 @@ export function CategoryFilter({
           className={cn(
             "flex-shrink-0 w-24 h-24 rounded-[1.5rem] flex flex-col items-center justify-center gap-3 transition-all duration-300",
             selectedCategory === category.id
-              ? "bg-black text-white shadow-xl shadow-gray-200 scale-105"
-              : "bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+              ? "bg-primary text-primary-foreground shadow-neu-inset scale-95"
+              : "bg-background text-muted-foreground hover:text-foreground shadow-neu hover:shadow-neu-sm"
           )}
         >
           {getIcon(category.name)}

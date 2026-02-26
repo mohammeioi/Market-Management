@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, OrderWithItems, CreateOrderRequest } from '@/types/order';
 import { CartItem } from '@/types/pos';
+import { Capacitor } from '@capacitor/core';
 
 interface OrderStore {
   orders: OrderWithItems[];
@@ -93,6 +94,21 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
 
       const { data: { user } } = await supabase.auth.getUser();
 
+      const pushToken = localStorage.getItem('push_token');
+      let platformSource = Capacitor.getPlatform() === 'android' ? 'android' : 'web';
+
+      if (pushToken) {
+        const { data: tokenData } = await supabase
+          .from('user_fcm_tokens')
+          .select('device_name')
+          .eq('token', pushToken)
+          .maybeSingle();
+
+        if (tokenData?.device_name) {
+          platformSource = tokenData.device_name === 'android' ? 'android' : 'web';
+        }
+      }
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -102,6 +118,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
           total_amount: totalAmount,
           notes: orderData.notes,
           user_id: user?.id,
+          source: platformSource as 'web' | 'android',
         })
         .select()
         .single();

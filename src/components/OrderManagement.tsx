@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useOrderStore } from '@/stores/useOrderStore';
 import { Order } from '@/types/order';
-import { Clock, Phone, Mail, Package, User, Trash2, MessageCircle, CheckCircle, Fingerprint, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Phone, Mail, Package, User, Trash2, MessageCircle, CheckCircle, Fingerprint, LogOut, ChevronDown, ChevronUp, Smartphone, Globe, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/currency';
 import { supabase } from '@/integrations/supabase/client';
@@ -98,8 +98,8 @@ const OrderItemsAccordion = ({ items, orderId }: { items: any[], orderId: string
 
   return (
     <div className={cn(
-      "w-full mt-2 border rounded-xl overflow-hidden transition-all",
-      isFullyChecked ? "border-green-200 bg-green-50/10" : "border-blue-100 bg-white"
+      "w-full mt-2 border-none rounded-xl overflow-hidden transition-all shadow-neu",
+      isFullyChecked ? "bg-green-50/50 shadow-neu-inset" : "bg-background"
     )}>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -122,66 +122,68 @@ const OrderItemsAccordion = ({ items, orderId }: { items: any[], orderId: string
         </div>
       </button>
 
-      {isExpanded && (
-        <div className="p-1.5 bg-gray-50/50 flex flex-col gap-1.5 border-t border-gray-100/50">
-          {items.map((item, idx) => (
-            <label
-              key={idx}
-              className={cn(
-                "flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all bg-white select-none",
-                checklist[`${orderId}_${idx}`] ? "border-green-200 bg-green-50/40 shadow-sm" : "border-gray-100 hover:border-blue-200"
-              )}
-            >
-              <div className="flex items-center justify-center p-0.5">
-                <input
-                  type="checkbox"
-                  checked={checklist[`${orderId}_${idx}`] || false}
-                  onChange={() => toggleCheck(idx)}
-                  className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 shadow-sm transition-all"
-                />
-              </div>
-
-              {item.product?.image ? (
-                <div className="w-8 h-8 rounded-lg bg-white flex-shrink-0 overflow-hidden border border-gray-100 p-0.5 shadow-sm">
-                  <img src={item.product.image} alt={item.product.name} className="w-full h-full object-contain" />
+      {
+        isExpanded && (
+          <div className="p-1.5 bg-background shadow-neu-inset rounded-2xl flex flex-col gap-1.5 border-none mt-2">
+            {items.map((item, idx) => (
+              <label
+                key={idx}
+                className={cn(
+                  "flex items-center gap-2 p-2 rounded-lg border-none cursor-pointer transition-all bg-background select-none",
+                  checklist[`${orderId}_${idx}`] ? "shadow-neu-inset bg-green-50/40" : "shadow-neu hover:shadow-neu-sm"
+                )}
+              >
+                <div className="flex items-center justify-center p-0.5">
+                  <input
+                    type="checkbox"
+                    checked={checklist[`${orderId}_${idx}`] || false}
+                    onChange={() => toggleCheck(idx)}
+                    className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 shadow-sm transition-all"
+                  />
                 </div>
-              ) : (
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0 border border-gray-100 shadow-sm">
-                  <Package size={14} />
-                </div>
-              )}
 
-              <div className="flex-1 min-w-0 flex items-center justify-between">
-                <div className="flex flex-col">
-                  <p className={cn(
-                    "text-xs font-bold truncate transition-all duration-300",
-                    checklist[`${orderId}_${idx}`] ? "text-gray-500 line-through decoration-2 decoration-green-500/50" : "text-gray-900"
-                  )}>
-                    {item.product?.name}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={cn(
-                      "text-[10px] font-semibold px-1.5 py-0.5 rounded-md transition-colors",
-                      checklist[`${orderId}_${idx}`] ? "bg-green-100/50 text-green-700" : "bg-gray-100 text-gray-600"
-                    )}>
-                      الكمية: {item.quantity}
-                    </span>
-                    {item.quantity > 1 && (
-                      <span className="text-[10px] font-medium text-gray-400">
-                        ({formatCurrency(item.unit_price)} للقطعة)
-                      </span>
-                    )}
+                {item.product?.image ? (
+                  <div className="w-8 h-8 rounded-lg bg-background flex-shrink-0 overflow-hidden border-none p-0.5 shadow-neu-inset">
+                    <img src={item.product.image} alt={item.product.name} className="w-full h-full object-contain" />
                   </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-gray-400 flex-shrink-0 border-none shadow-neu-inset">
+                    <Package size={14} />
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0 flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <p className={cn(
+                      "text-xs font-bold truncate transition-all duration-300",
+                      checklist[`${orderId}_${idx}`] ? "text-gray-500 line-through decoration-2 decoration-green-500/50" : "text-gray-900"
+                    )}>
+                      {item.product?.name}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={cn(
+                        "text-[10px] font-semibold px-2 py-0.5 rounded-md transition-colors bg-background border-none shadow-neu-inset",
+                        checklist[`${orderId}_${idx}`] ? "text-green-600" : "text-gray-500"
+                      )}>
+                        الكمية: {item.quantity}
+                      </span>
+                      {item.quantity > 1 && (
+                        <span className="text-[10px] font-medium text-gray-400">
+                          ({formatCurrency(item.unit_price)} للقطعة)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-blue-600 mr-2 whitespace-nowrap">
+                    {formatCurrency(item.total_price)}
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-blue-600 mr-2 whitespace-nowrap">
-                  {formatCurrency(item.total_price)}
-                </span>
-              </div>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
+              </label>
+            ))}
+          </div>
+        )
+      }
+    </div >
   );
 };
 
@@ -426,21 +428,21 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
     if (event) {
       const button = event.currentTarget as HTMLElement;
       const checkIcon = button.querySelector('.check-icon') as HTMLElement;
-      
+
       if (checkIcon) {
         const ripple = document.createElement('span');
         const rect = checkIcon.getBoundingClientRect();
         const size = 40; // Fixed size for the icon ripple
         const x = event.clientX - rect.left - size / 2;
         const y = event.clientY - rect.top - size / 2;
-        
+
         ripple.style.width = ripple.style.height = size + 'px';
         ripple.style.left = x + 'px';
         ripple.style.top = y + 'px';
         ripple.classList.add('ripple-icon');
-        
+
         checkIcon.appendChild(ripple);
-        
+
         setTimeout(() => {
           ripple.remove();
         }, 600);
@@ -745,7 +747,7 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
   } else if (!isClockedIn && profiles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
-        <div className="p-6 bg-gray-50 rounded-full animate-pulse">
+        <div className="p-6 bg-background shadow-neu rounded-full animate-pulse border-none">
           <Fingerprint size={64} className="text-gray-400" />
         </div>
         <div className="space-y-2">
@@ -867,8 +869,8 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
             return (
               <div key={profile.id} className="relative group">
                 <div className={cn(
-                  "w-12 h-12 rounded-full border-2 flex items-center justify-center bg-gray-100 text-xs font-bold text-gray-600 shadow-sm transition-transform hover:scale-110 hover:z-10",
-                  isClockedIn ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 grayscale"
+                  "w-12 h-12 rounded-full border-none flex items-center justify-center bg-background text-xs font-bold transition-transform hover:scale-110 hover:z-10",
+                  isClockedIn ? "shadow-neu-inset text-green-600" : "shadow-neu text-gray-400 grayscale"
                 )}>
                   {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?'}
                 </div>
@@ -920,8 +922,8 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
 
             return (
               <div key={order.id} className={cn(
-                "group relative bg-white rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all border flex flex-col gap-4",
-                isScannedOrder ? "border-blue-500 shadow-lg shadow-blue-200 animate-pulse" : "border-gray-100"
+                "group relative bg-background rounded-[2rem] p-6 shadow-neu hover:shadow-neu-sm transition-all border-none flex flex-col gap-4",
+                isScannedOrder ? "ring-2 ring-primary shadow-neu-inset animate-pulse" : ""
               )}>
                 {/* Scanned Order Badge */}
                 {isScannedOrder && (
@@ -932,7 +934,7 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
                 {/* Header: Icon + Title + Date */}
                 <div className="flex justify-between items-start">
                   <div className="flex gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-900 shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl bg-background flex items-center justify-center text-primary shadow-neu-inset border-none">
                       <Package size={24} />
                     </div>
                     <div>
@@ -945,22 +947,34 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
                       </div>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
-                    {new Date(order.created_at).toLocaleDateString('ar-SA')}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-xs font-semibold text-gray-400 bg-background shadow-neu-inset px-3 py-1 rounded-full border-none">
+                      {new Date(order.created_at).toLocaleDateString('ar-SA')}
+                    </span>
+                    {order.source && (
+                      <span className={cn(
+                        "flex items-center gap-1 text-[10px] font-bold px-3 py-1 rounded-full shadow-neu-inset bg-background border-none",
+                        order.source === 'android' ? "text-green-600" : "text-blue-600"
+                      )}>
+                        {order.source === 'android' ? <Smartphone size={12} /> : <Globe size={12} />}
+                        {order.source === 'android' ? 'موبايل' : 'موقع'}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Tags/Pills */}
-                <div className="flex flex-wrap gap-2">
-                  <span className={cn("px-3 py-1 rounded-full text-xs font-bold", statusColors[order.status].replace('bg-', 'bg-').replace('500', '100') + " " + statusColors[order.status].replace('bg-', 'text-'))}>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className={cn("px-4 py-1.5 rounded-full text-xs font-bold shadow-neu-inset bg-background border-none", statusColors[order.status].replace('bg-', 'text-'))}>
                     {statusLabels[order.status]}
                   </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+                  <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-background shadow-neu-inset text-gray-600 border-none">
                     {itemCount} عناصر
                   </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600">
+                  <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-background shadow-neu-inset text-primary border-none">
                     {formatCurrency(order.total_amount)}
                   </span>
+                  {/* Removed Location button as requested */}
                 </div>
 
                 {/* Order Items Expandable Checklist */}
@@ -968,9 +982,9 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
 
                 {/* Notes Section */}
                 {order.notes && (
-                  <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
-                    <p className="text-xs text-yellow-800 font-medium flex items-center gap-2">
-                      <span className="font-bold">ملاحظات:</span> {order.notes}
+                  <div className="bg-background shadow-neu-inset p-3 sm:p-4 rounded-xl border-none">
+                    <p className="text-xs text-yellow-600 font-bold flex items-center gap-2">
+                      <span className="font-extrabold text-yellow-500">ملاحظات:</span> {order.notes}
                     </p>
                   </div>
                 )}
@@ -986,12 +1000,12 @@ export function OrderManagement({ scannedOrderId }: { scannedOrderId?: string })
                       >
                         {/* Shimmer effect on hover */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></div>
-                        
+
                         {/* Click ripple effect */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                           <div className="ripple-container"></div>
                         </div>
-                        
+
                         <CheckCircle className="mr-2 h-5 w-5 relative z-10 check-icon" />
                         <span className="relative z-10">موافقة على الطلب</span>
                       </Button>

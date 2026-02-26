@@ -35,7 +35,7 @@ function NotificationTokenDisplay() {
           <p className="text-xs text-blue-500 truncate" dir="ltr">{pushToken}</p>
         </div>
       </div>
-      <Button variant="outline" size="sm" onClick={copyToken} className="shrink-0 gap-2 bg-white hover:bg-blue-50 text-blue-700 border-blue-200">
+      <Button variant="outline" size="sm" onClick={copyToken} className="shrink-0 gap-2 bg-background hover:bg-blue-50 text-blue-700 border-none shadow-neu hover:shadow-neu-sm active:shadow-neu-inset">
         <Copy size={16} />
         <span>نسخ الرمز</span>
       </Button>
@@ -377,18 +377,18 @@ export function ProductManagement() {
 
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <div className="flex flex-row flex-wrap justify-end gap-2 sm:gap-3 w-full">
-            <Button onClick={() => setShowCategoryManagement(true)} variant="outline" className="gap-2 bg-white text-gray-700 hover:bg-gray-50 flex-none h-10 px-3 sm:px-4">
+            <Button onClick={() => setShowCategoryManagement(true)} variant="outline" className="gap-2 bg-background text-gray-700 shadow-neu hover:shadow-neu-sm border-none active:shadow-neu-inset flex-none h-10 px-3 sm:px-4">
               <FolderSync size={20} />
               <span className="hidden sm:inline">إدارة الفئات</span>
             </Button>
-            <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="gap-2 bg-white text-gray-700 hover:bg-gray-50 flex-none h-10 px-3 sm:px-4">
+            <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="gap-2 bg-background text-gray-700 shadow-neu hover:shadow-neu-sm border-none active:shadow-neu-inset flex-none h-10 px-3 sm:px-4">
               <Upload size={20} />
               <span className="hidden sm:inline">استيراد</span>
             </Button>
-            <Button onClick={handleRefresh} variant="outline" className="px-3 bg-white text-gray-700 hover:bg-gray-50 h-10">
+            <Button onClick={handleRefresh} variant="outline" className="px-3 bg-background text-gray-700 shadow-neu hover:shadow-neu-sm border-none active:shadow-neu-inset h-10">
               <RefreshCw size={20} className="text-gray-600" />
             </Button>
-            <Button onClick={handleAdd} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white flex-none h-10 px-3 sm:px-4">
+            <Button onClick={handleAdd} className="gap-2 bg-primary hover:bg-primary/90 shadow-neu hover:shadow-neu-sm active:shadow-neu-inset text-primary-foreground border-none flex-none h-10 px-3 sm:px-4">
               <Plus size={20} />
               <span className="hidden sm:inline">إضافة منتج</span>
             </Button>
@@ -457,11 +457,11 @@ export function ProductManagement() {
             <div
               key={product.id}
               className={`
-                group relative bg-white rounded-xl overflow-hidden
-                shadow-[0_2px_15px_-4px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_25px_-8px_rgba(0,0,0,0.2)]
-                transition-all duration-300 border-2
+                group relative bg-background rounded-2xl overflow-hidden
+                shadow-neu hover:shadow-neu-sm
+                transition-all duration-300 border-none
                 flex flex-col
-                ${selectedIds.has(product.id) ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-100'}
+                ${selectedIds.has(product.id) ? 'shadow-[0_0_15px_rgba(59,130,246,0.5)]' : ''}
                 ${product.isAvailable === false ? 'opacity-75 grayscale-[0.5]' : ''}
               `}
             >
@@ -478,29 +478,15 @@ export function ProductManagement() {
                 <Check size={14} />
               </button>
               {/* Image Section - Floating effect with Ambient Glow */}
-              <div className="relative pt-6 px-6 pb-2 flex justify-center overflow-hidden">
-
-                {/* Ambient Background Layer */}
-                <div
-                  className="absolute inset-0 opacity-20 blur-xl scale-150 transition-transform duration-700 group-hover:scale-125 group-hover:opacity-30"
-                  style={{
-                    backgroundImage: `url(${product.image || '/placeholder.svg'})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-white/80 z-0" />
-
-                <div className="relative z-10 w-40 h-40 drop-shadow-xl transition-transform duration-500 group-hover:scale-110">
+              <div className="relative pt-6 px-4 sm:px-6 pb-2 flex justify-center overflow-hidden">
+                <div className="mx-auto w-[90%] aspect-square max-w-[200px] rounded-[2rem] flex items-center justify-center text-gray-900 overflow-hidden shadow-neu-inset bg-background relative group p-1 sm:p-2">
                   <img
                     src={product.image || '/placeholder.svg'}
                     alt={product.name}
-                    className="w-full h-full object-contain object-center"
+                    className="w-full h-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.15]"
                     loading="lazy"
                   />
                 </div>
-
-                {/* Top Right Actions (Removed) */}
               </div>
 
               {/* Content Section */}
@@ -540,7 +526,7 @@ export function ProductManagement() {
               </div>
 
               {/* Footer Actions */}
-              <div className="border-t border-gray-100 p-4 flex items-center justify-between bg-white gap-2">
+              <div className="p-4 flex items-center justify-between bg-background gap-2 border-none">
                 <div className="flex items-center gap-1.5 text-gray-300 text-xs font-medium">
                   <Package size={14} />
                   <span>{product.stock}</span>
@@ -561,14 +547,14 @@ export function ProductManagement() {
 
                   <button
                     onClick={(e) => { e.stopPropagation(); handleEdit(product); }}
-                    className="w-8 h-8 rounded-full bg-gray-50 text-gray-600 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors border border-gray-100"
+                    className="w-8 h-8 rounded-full bg-background shadow-neu hover:shadow-neu-sm active:shadow-neu-inset text-gray-600 hover:text-blue-600 flex items-center justify-center transition-all border-none"
                     title="تعديل"
                   >
                     <Edit size={14} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(product); }}
-                    className="w-8 h-8 rounded-full bg-gray-50 text-red-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors border border-gray-100"
+                    className="w-8 h-8 rounded-full bg-background shadow-neu hover:shadow-neu-sm active:shadow-neu-inset text-red-500 hover:text-red-700 flex items-center justify-center transition-all border-none"
                     title="حذف"
                   >
                     <Trash2 size={14} />
@@ -625,7 +611,7 @@ export function ProductManagement() {
       {/* Batch Parent Picker Dialog */}
       {showBatchParentPicker && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBatchParentPicker(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-background rounded-2xl shadow-neu border-none w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-right">اختر المنتج الأب</h3>
             <p className="text-sm text-gray-500 text-right">سيتم تعيين {selectedIds.size} منتج كتنويعات للمنتج اللي تختاره</p>
             <Input
@@ -667,7 +653,7 @@ export function ProductManagement() {
       {/* Batch Category Picker Modal */}
       {showBatchCategoryPicker && (
         <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center p-4" onClick={() => setShowBatchCategoryPicker(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-background rounded-2xl shadow-neu border-none w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-right">نقل المنتجات إلى فئة</h3>
             <p className="text-sm text-gray-500 text-right">سيتم نقل {selectedIds.size} منتج إلى الفئة التي تختارها أو تكتبها.</p>
 

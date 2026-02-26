@@ -234,7 +234,7 @@ export function POSView() {
           <Input
             type="text"
             placeholder="ابحث عن منتج..."
-            className="w-full h-14 pr-12 pl-4 text-right text-lg bg-white border-0 shadow-sm rounded-2xl ring-1 ring-gray-100 focus-visible:ring-2 focus-visible:ring-gray-900 transition-shadow"
+            className="w-full h-14 pr-12 pl-4 text-right text-lg bg-background border-none shadow-neu-inset rounded-2xl focus-visible:ring-2 focus-visible:ring-primary transition-shadow"
             value={searchTerm}
             onChange={handleSearchChange}
           />
@@ -260,7 +260,7 @@ export function POSView() {
             <h2 className="font-bold text-xl text-gray-900">المنتجات</h2>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {products
               .filter(p => searchTerm.trim() ? true : !p.parent_id) // Show all during search, only parents otherwise
               .map((product) => (

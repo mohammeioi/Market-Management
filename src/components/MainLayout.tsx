@@ -7,7 +7,7 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     return (
-        <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans selection:bg-black selection:text-white" dir="rtl">
+        <div className="min-h-screen bg-background pb-32 font-sans selection:bg-primary selection:text-primary-foreground" dir="rtl">
             <main className="w-full">
                 {children}
             </main>

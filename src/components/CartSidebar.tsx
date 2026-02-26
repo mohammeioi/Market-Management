@@ -21,12 +21,12 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
-    
+
     toast({
       title: "✅ تم إتمام الدفع بنجاح",
       description: `تم دفع ${formatCurrency(getCartTotal())} بنجاح`,
     });
-    
+
     clearCart();
   };
 
@@ -44,9 +44,8 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
   // للموبايل: إظهار السلة مصغرة أو موسعة
   if (isMobile) {
     return (
-      <Card className={`bg-pos-surface border-border/50 transition-all duration-300 ${
-        isExpanded ? 'h-[70vh]' : 'h-16'
-      }`} style={{ boxShadow: 'var(--shadow-card)' }}>
+      <Card className={`bg-pos-surface transition-all duration-300 ${isExpanded ? 'h-[70vh]' : 'h-16'
+        }`}>
         <CardHeader className="pb-2 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           <CardTitle className="flex items-center gap-2 text-right">
             <ShoppingCart size={20} />
@@ -64,7 +63,7 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
             </div>
           </CardTitle>
         </CardHeader>
-        
+
         {isExpanded && (
           <CardContent className="flex flex-col h-full pt-0">
             {cart.length === 0 ? (
@@ -81,13 +80,13 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                   {cart.map((item) => (
                     <div key={item.product.id} className="flex items-center gap-3 p-3 bg-pos-surface-secondary rounded-lg">
                       <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                        <img 
-                          src={item.product.image} 
+                        <img
+                          src={item.product.image}
                           alt={item.product.name}
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      
+
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-sm text-right truncate">
                           {item.product.name}
@@ -96,7 +95,7 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                           {formatCurrency(item.product.price)}
                         </p>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
@@ -107,11 +106,11 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                         >
                           <Minus size={12} />
                         </Button>
-                        
+
                         <span className="w-8 text-center font-medium">
                           {item.quantity}
                         </span>
-                        
+
                         <Button
                           size="sm"
                           variant="outline"
@@ -120,7 +119,7 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                         >
                           <Plus size={12} />
                         </Button>
-                        
+
                         <Button
                           size="sm"
                           variant="ghost"
@@ -133,17 +132,17 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="border-t pt-4 mt-4 space-y-3">
                   <div className="flex justify-between items-center text-lg font-bold">
                     <span>المجموع:</span>
                     <span className="text-primary">{formatCurrency(getCartTotal())}</span>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button 
+                        <Button
                           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                           style={{ background: 'var(--gradient-primary)' }}
                           disabled={cart.length === 0}
@@ -155,15 +154,15 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                         <DialogHeader>
                           <DialogTitle>إرسال طلب للعميل</DialogTitle>
                         </DialogHeader>
-                        <CustomerOrderForm 
+                        <CustomerOrderForm
                           cart={cart}
                           onOrderComplete={handleOrderComplete}
                           onCancel={() => setIsOrderDialogOpen(false)}
                         />
                       </DialogContent>
                     </Dialog>
-                    
-                    <Button 
+
+                    <Button
                       onClick={handleCheckout}
                       variant="outline"
                       className="w-full"
@@ -172,8 +171,8 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                       <CreditCard size={16} className="ml-2" />
                       دفع مباشر
                     </Button>
-                    
-                    <Button 
+
+                    <Button
                       onClick={clearCart}
                       variant="outline"
                       className="w-full"
@@ -193,7 +192,7 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
 
   // للديسكتوب: العرض الكامل
   return (
-    <Card className="h-full bg-pos-surface border-border/50" style={{ boxShadow: 'var(--shadow-card)' }}>
+    <Card className="h-full bg-pos-surface">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-right">
           <ShoppingCart size={20} />
@@ -205,7 +204,7 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
           )}
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="flex flex-col h-full">
         {cart.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-center text-muted-foreground">
@@ -221,13 +220,13 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
               {cart.map((item) => (
                 <div key={item.product.id} className="flex items-center gap-3 p-3 bg-pos-surface-secondary rounded-lg">
                   <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                    <img 
-                      src={item.product.image} 
+                    <img
+                      src={item.product.image}
                       alt={item.product.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm text-right truncate">
                       {item.product.name}
@@ -236,7 +235,7 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                       {formatCurrency(item.product.price)}
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
@@ -247,11 +246,11 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                     >
                       <Minus size={12} />
                     </Button>
-                    
+
                     <span className="w-8 text-center font-medium">
                       {item.quantity}
                     </span>
-                    
+
                     <Button
                       size="sm"
                       variant="outline"
@@ -260,7 +259,7 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                     >
                       <Plus size={12} />
                     </Button>
-                    
+
                     <Button
                       size="sm"
                       variant="ghost"
@@ -273,17 +272,17 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                 </div>
               ))}
             </div>
-            
+
             <div className="border-t pt-4 mt-4 space-y-3">
               <div className="flex justify-between items-center text-lg font-bold">
                 <span>المجموع:</span>
                 <span className="text-primary">{formatCurrency(total)}</span>
               </div>
-              
+
               <div className="space-y-2">
                 <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button 
+                    <Button
                       className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                       style={{ background: 'var(--gradient-primary)' }}
                       disabled={cart.length === 0}
@@ -295,15 +294,15 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                     <DialogHeader>
                       <DialogTitle>إرسال طلب للعميل</DialogTitle>
                     </DialogHeader>
-                    <CustomerOrderForm 
+                    <CustomerOrderForm
                       cart={cart}
                       onOrderComplete={handleOrderComplete}
                       onCancel={() => setIsOrderDialogOpen(false)}
                     />
                   </DialogContent>
                 </Dialog>
-                
-                <Button 
+
+                <Button
                   onClick={handleCheckout}
                   variant="outline"
                   className="w-full"
@@ -312,8 +311,8 @@ export function CartSidebar({ isMobile = false }: CartSidebarProps) {
                   <CreditCard size={16} className="ml-2" />
                   دفع مباشر
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={clearCart}
                   variant="outline"
                   className="w-full"

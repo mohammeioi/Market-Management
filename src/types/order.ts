@@ -12,6 +12,10 @@ export interface Order {
   created_at: string;
   updated_at: string;
   is_profit_deleted?: boolean;
+  source?: 'web' | 'android';
+  delivery_lat?: number;
+  delivery_lng?: number;
+  delivery_address?: string;
 }
 
 export interface OrderItem {
@@ -44,4 +48,8 @@ export interface CreateOrderRequest {
     quantity: number;
     unit_price: number;
   }[];
+  source?: 'web' | 'android';
+  delivery_lat?: number;
+  delivery_lng?: number;
+  delivery_address?: string;
 }

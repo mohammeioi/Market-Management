@@ -51,20 +51,11 @@ export function ProductCard({ product }: ProductCardProps) {
     <>
       <div
         className={cn(
-          "group relative flex flex-col items-center justify-between p-3 sm:p-5 rounded-3xl sm:rounded-[2.5rem] transition-all cursor-pointer hover:scale-[1.02] active:scale-95 aspect-[4/5] bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-xl border border-gray-100/50 overflow-hidden",
+          "group relative flex flex-col items-center justify-between p-3 sm:p-5 rounded-3xl sm:rounded-[2.5rem] transition-all cursor-pointer hover:scale-[1.02] active:scale-95 aspect-[4/5] bg-background shadow-neu hover:shadow-neu-sm border-none overflow-hidden",
         )}
         onClick={() => setShowDetails(true)}
       >
-        {/* Ambient Background Layer */}
-        <div
-          className="absolute inset-0 opacity-20 blur-xl scale-150 transition-transform duration-700 group-hover:scale-125 group-hover:opacity-30"
-          style={{
-            backgroundImage: `url(${selectedVariant.image || ''})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-white/90 z-0" />
+
 
         {/* Top: Removed Status Badge (Clean) */}
         <div className="w-full flex justify-between items-start z-10 w-full h-6">
@@ -77,25 +68,25 @@ export function ProductCard({ product }: ProductCardProps) {
             <button
               type="button"
               onClick={handlePrevVariant}
-              className="absolute right-0 sm:-right-2 p-1.5 sm:p-2 rounded-full bg-white/90 backdrop-blur-md shadow-md border border-gray-100/50 text-gray-600 hover:text-gray-900 hover:bg-white z-20 active:scale-95 transition-all"
+              className="absolute right-0 sm:-right-2 p-1.5 sm:p-2 rounded-full bg-background/90 backdrop-blur-md shadow-neu hover:shadow-neu-sm border-none text-gray-600 hover:text-gray-900 z-20 active:shadow-neu-inset transition-all"
             >
               <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           )}
 
-          <div className={cn("mx-auto w-24 h-24 sm:w-32 sm:h-32 rounded-2xl flex items-center justify-center text-gray-900 overflow-hidden shadow-sm bg-transparent relative group")}>
+          <div className={cn("mx-auto w-[90%] aspect-square max-w-[240px] rounded-[2rem] flex items-center justify-center text-gray-900 overflow-hidden shadow-neu-inset bg-background relative group p-1 sm:p-2")}>
             {selectedVariant.image ? (
               <>
                 <img
                   src={selectedVariant.image}
                   alt=""
-                  className="w-full h-full object-cover mix-blend-multiply drop-shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                  className="w-full h-full object-contain mix-blend-multiply cursor-pointer hover:scale-[1.15] transition-transform duration-300"
                   onClick={handleImageClick}
                 />
                 {/* Hover effect for image */}
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 flex items-center justify-center">
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <div className="bg-white rounded-full p-2 shadow-lg">
+                    <div className="bg-background rounded-full p-2 shadow-neu">
                       <ZoomIn size={16} className="text-gray-700" />
                     </div>
                   </div>
@@ -110,7 +101,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <button
               type="button"
               onClick={handleNextVariant}
-              className="absolute left-0 sm:-left-2 p-1.5 sm:p-2 rounded-full bg-white/90 backdrop-blur-md shadow-md border border-gray-100/50 text-gray-600 hover:text-gray-900 hover:bg-white z-20 active:scale-95 transition-all"
+              className="absolute left-0 sm:-left-2 p-1.5 sm:p-2 rounded-full bg-background/90 backdrop-blur-md shadow-neu hover:shadow-neu-sm border-none text-gray-600 hover:text-gray-900 z-20 active:shadow-neu-inset transition-all"
             >
               <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
@@ -119,14 +110,14 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Bottom: Title & Price */}
         <div className="w-full text-center mt-1 sm:mt-2 z-10 flex flex-col items-center gap-0.5 sm:gap-1">
-          <h3 className="font-bold text-sm sm:text-lg leading-tight line-clamp-1 text-gray-900 px-1">
+          <h3 className="font-bold text-base sm:text-xl leading-tight line-clamp-1 text-gray-900 px-1">
             {selectedVariant.name}
           </h3>
-          <p className={cn("text-xs sm:text-base text-gray-500 font-medium")}>
+          <p className={cn("text-sm sm:text-lg text-primary font-bold")}>
             {formatCurrency(selectedVariant.price)}
           </p>
           {hasVariants ? (
-            <span className="text-[10px] sm:text-xs font-bold text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full mt-0.5 border border-gray-100 shadow-sm line-clamp-1 max-w-[90%]">
+            <span className="text-[10px] sm:text-xs font-bold text-primary shadow-neu-inset px-3 py-1 bg-background rounded-full mt-1 border-none line-clamp-1 max-w-[90%]">
               {product.category}
             </span>
           ) : (

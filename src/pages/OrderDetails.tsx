@@ -32,7 +32,7 @@ const statusLabels: Record<string, string> = {
 const OrderItemDetail = ({ item }: { item: any }) => (
   <AlertDialog>
     <AlertDialogTrigger asChild>
-      <div className="p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer">
+      <div className="p-4 rounded-xl border-none shadow-neu hover:shadow-neu-sm bg-background transition-all cursor-pointer">
         <div className="flex items-center gap-4">
           {item.product?.image ? (
             <img
@@ -94,8 +94,8 @@ export function OrderDetails() {
   const scannedOrderId = location.state?.scannedOrderId || orderId;
 
   // Find the specific order
-  const order = orders.find(o => 
-    o.id === scannedOrderId || 
+  const order = orders.find(o =>
+    o.id === scannedOrderId ||
     o.id.includes(scannedOrderId) ||
     scannedOrderId?.includes(o.id)
   );
@@ -109,7 +109,7 @@ export function OrderDetails() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!order) return;
-    
+
     try {
       await updateOrderStatus(order.id, newStatus as any);
       toast({
@@ -127,7 +127,7 @@ export function OrderDetails() {
 
   const handleApproveOrder = async () => {
     if (!order) return;
-    
+
     try {
       const result = await approveOrder(order.id);
       if (result.success) {
@@ -154,7 +154,7 @@ export function OrderDetails() {
 
   const handleDeleteOrder = async () => {
     if (!order) return;
-    
+
     setDeletingOrderId(order.id);
     try {
       const result = await deleteOrder(order.id);
@@ -184,7 +184,7 @@ export function OrderDetails() {
 
   const handleSendWhatsApp = () => {
     if (!order || !order.customer_phone) return;
-    
+
     let phone = order.customer_phone.replace(/\D/g, '');
     if (phone.startsWith('0')) {
       phone = '964' + phone.substring(1);
@@ -227,7 +227,7 @@ export function OrderDetails() {
               العودة
             </Button>
           </div>
-          <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+          <div className="bg-background rounded-[2rem] p-8 text-center shadow-neu border-none">
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold mb-2">الطلب غير موجود</h3>
             <p className="text-gray-500 mb-6">
@@ -256,7 +256,7 @@ export function OrderDetails() {
             <ArrowRight size={20} />
             العودة
           </Button>
-          
+
           {location.state?.scannedOrderId && (
             <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-lg mb-4">
               <p className="text-sm font-medium">
@@ -266,11 +266,11 @@ export function OrderDetails() {
           )}
         </div>
 
-        <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+        <div className="bg-background rounded-[2rem] p-6 shadow-neu border-none">
           {/* Header */}
           <div className="flex justify-between items-start mb-6">
             <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-900 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-background flex items-center justify-center text-primary shadow-neu-inset border-none">
                 <Package size={24} />
               </div>
               <div>
@@ -303,7 +303,7 @@ export function OrderDetails() {
 
           {/* Notes */}
           {order.notes && (
-            <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 mb-6">
+            <div className="bg-yellow-50/50 p-4 rounded-xl shadow-neu-inset border-none mb-6">
               <p className="text-sm text-yellow-800 font-medium">
                 <span className="font-bold">ملاحظات:</span> {order.notes}
               </p>
@@ -360,7 +360,7 @@ export function OrderDetails() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <button className="h-12 w-12 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors">
+                  <button className="h-12 w-12 rounded-xl border-none shadow-neu hover:shadow-neu-sm active:shadow-neu-inset bg-background flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors">
                     <Trash2 size={20} />
                   </button>
                 </AlertDialogTrigger>
