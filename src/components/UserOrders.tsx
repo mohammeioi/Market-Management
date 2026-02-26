@@ -38,7 +38,7 @@ const OrderItemBadge = ({ item }: { item: any }) => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-600 font-medium bg-white hover:bg-gray-50 transition-colors relative">
+        <button className="px-3 py-1.5 rounded-xl border-none shadow-neu text-xs text-gray-600 font-medium bg-background hover:shadow-neu-sm active:shadow-neu-inset transition-all relative">
           {item.product?.name} × {item.quantity}
           {item.quantity > 1 && (
             <span className={cn(
@@ -82,7 +82,7 @@ const OrderItemBadge = ({ item }: { item: any }) => {
               <Package size={48} />
             </div>
           )}
-          
+
           {/* Checklist for multiple quantities */}
           {item.quantity > 1 && (
             <div className="w-full space-y-2">
@@ -102,7 +102,7 @@ const OrderItemBadge = ({ item }: { item: any }) => {
               </div>
             </div>
           )}
-          
+
           <div className="text-center space-y-2 w-full">
             <p className="text-lg font-bold text-blue-600">{formatCurrency(item.unit_price)}</p>
             <p className="text-sm text-gray-500">الكمية: {item.quantity}</p>
@@ -147,13 +147,13 @@ export function UserOrders() {
 
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (order.customer_phone && order.customer_phone.includes(searchTerm));
-    
+
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -200,7 +200,7 @@ export function UserOrders() {
   if (!isClockedIn) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
-        <div className="p-6 bg-gray-50 rounded-full">
+        <div className="p-6 bg-background shadow-neu-inset rounded-full">
           <Package size={64} className="text-gray-400" />
         </div>
         <div className="space-y-2">
@@ -262,7 +262,7 @@ export function UserOrders() {
               {searchTerm || statusFilter !== 'all' ? 'لا توجد طلبات مطابقة' : 'لا توجد طلبات'}
             </h3>
             <p className="text-sm text-muted-foreground text-center">
-              {searchTerm || statusFilter !== 'all' 
+              {searchTerm || statusFilter !== 'all'
                 ? 'لم يتم العثور على طلبات تطابق معايير البحث'
                 : 'لم يتم استلام أي طلبات بعد'
               }
@@ -275,11 +275,11 @@ export function UserOrders() {
             const itemCount = order.order_items.reduce((sum, item) => sum + item.quantity, 0);
 
             return (
-              <div key={order.id} className="group relative bg-white rounded-[2rem] p-6 shadow-sm hover:shadow-md transition-all border border-gray-100 flex flex-col gap-4">
+              <div key={order.id} className="group relative bg-background rounded-[2rem] p-6 shadow-neu hover:shadow-neu-sm transition-all border-none flex flex-col gap-4">
                 {/* Header: Icon + Title + Date */}
                 <div className="flex justify-between items-start">
                   <div className="flex gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-900 shadow-sm">
+                    <div className="w-12 h-12 rounded-[1.25rem] bg-background flex items-center justify-center text-primary shadow-neu">
                       <Package size={24} />
                     </div>
                     <div>
@@ -292,20 +292,20 @@ export function UserOrders() {
                       </div>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                  <span className="text-xs font-semibold text-gray-500 bg-background shadow-neu-inset px-3 py-1 rounded-full">
                     {new Date(order.created_at).toLocaleDateString('ar-SA')}
                   </span>
                 </div>
 
                 {/* Tags/Pills */}
                 <div className="flex flex-wrap gap-2">
-                  <span className={cn("px-3 py-1 rounded-full text-xs font-bold", statusColors[order.status].replace('bg-', 'bg-').replace('500', '100') + " " + statusColors[order.status].replace('bg-', 'text-'))}>
+                  <span className={cn("px-4 py-1.5 rounded-full text-xs font-bold border-none shadow-neu-inset bg-background", statusColors[order.status].replace('bg-', 'text-'))}>
                     {statusLabels[order.status]}
                   </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+                  <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-background shadow-neu-inset text-gray-600 border-none">
                     {itemCount} عناصر
                   </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600">
+                  <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-background shadow-neu-inset text-primary border-none">
                     {formatCurrency(order.total_amount)}
                   </span>
                 </div>
@@ -319,7 +319,7 @@ export function UserOrders() {
                   {order.order_items.length > 3 && (
                     <Dialog>
                       <DialogTrigger asChild>
-                        <button className="px-3 py-1.5 rounded-xl border border-gray-100 text-xs text-gray-400 font-medium bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <button className="px-3 py-1.5 rounded-xl border-none shadow-neu hover:shadow-neu-sm active:shadow-neu-inset text-xs text-gray-400 font-medium bg-background transition-all">
                           +{order.order_items.length - 3} المزيد
                         </button>
                       </DialogTrigger>
