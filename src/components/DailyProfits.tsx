@@ -23,7 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const DailyProfits = () => {
-    const [profits, setProfits] = useState<Order[]>([]);
+    const [profits, setProfits] = useState<{ date: string, total_amount: number, total_orders: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
     const { toast } = useToast();
@@ -32,14 +32,12 @@ export const DailyProfits = () => {
         try {
             setLoading(true);
             const { data, error } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('status', 'delivered')
-                .or('is_profit_deleted.eq.false,is_profit_deleted.is.null')
-                .order('updated_at', { ascending: false });
+                .from('daily_profits')
+                .select('date, total_amount, total_orders')
+                .order('date', { ascending: false });
 
             if (error) throw error;
-            setProfits((data as unknown as Order[]) || []);
+            setProfits(data || []);
         } catch (error: any) {
             console.error('Error fetching profits:', error);
             toast({
@@ -63,8 +61,7 @@ export const DailyProfits = () => {
                 {
                     event: '*',
                     schema: 'public',
-                    table: 'orders',
-                    filter: "status=eq.delivered",
+                    table: 'daily_profits',
                 },
                 () => {
                     fetchProfits();
@@ -88,25 +85,16 @@ export const DailyProfits = () => {
 
     const today = getLocalDateStr();
 
-    const todayProfits = profits.filter(order => {
-        const orderDate = getLocalDateStr(order.updated_at || order.created_at);
-        return orderDate === today;
-    });
+    const todayProfits = profits.find(p => p.date === today);
+    const historyProfits = profits.filter(p => p.date !== today);
 
-    const historyProfits = profits.filter(order => {
-        const orderDate = getLocalDateStr(order.updated_at || order.created_at);
-        return orderDate !== today;
-    });
-
-    const todayTotal = todayProfits.reduce((sum, order) => sum + order.total_amount, 0);
-    const historyTotal = historyProfits.reduce((sum, order) => sum + order.total_amount, 0);
+    const todayTotal = todayProfits?.total_amount || 0;
+    const historyTotal = historyProfits.reduce((sum, p) => sum + p.total_amount, 0);
     const grandTotal = todayTotal + historyTotal;
 
-    // Group history by date
-    const groupedHistory = historyProfits.reduce((acc, order) => {
-        const orderDate = getLocalDateStr(order.updated_at || order.created_at);
-        if (!acc[orderDate]) acc[orderDate] = 0;
-        acc[orderDate] += order.total_amount;
+    // Group history by date (already grouped in DB, just formatting)
+    const groupedHistory = historyProfits.reduce((acc, p) => {
+        acc[p.date] = p.total_amount;
         return acc;
     }, {} as Record<string, number>);
 
@@ -119,9 +107,9 @@ export const DailyProfits = () => {
             const historyIds = historyProfits.map(o => o.id);
 
             const { error } = await supabase
-                .from('orders')
-                .update({ is_profit_deleted: true } as any)
-                .in('id', historyIds);
+                .from('daily_profits')
+                .delete()
+                .neq('date', today);
 
             if (error) throw error;
 
@@ -156,15 +144,15 @@ export const DailyProfits = () => {
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <button className="group relative flex items-center gap-4 bg-background transition-all px-4 py-3 rounded-[2rem] mb-8 border-none shadow-neu hover:shadow-neu-sm active:shadow-neu-inset w-full sm:w-auto">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-50 text-green-600 rounded-xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-300">
-                        <BarChart3 size={24} strokeWidth={2.5} />
-                    </div>
+                <button className="group relative flex items-center justify-end gap-4 bg-background transition-all px-4 py-3 rounded-3xl mb-8 border-none shadow-neu hover:shadow-neu-sm active:shadow-neu-inset w-full sm:w-auto">
                     <div className="flex flex-col text-right">
                         <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">أرباح اليوم المكتملة</span>
-                        <span className="text-xl font-black text-gray-900 leading-none">
+                        <span className="text-xl font-black text-gray-900 leading-none" dir="ltr">
                             {formatCurrency(todayTotal)}
                         </span>
+                    </div>
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-50 text-green-600 rounded-2xl flex shrink-0 items-center justify-center shadow-inner group-hover:scale-105 transition-transform duration-300">
+                        <BarChart3 size={24} strokeWidth={2.5} />
                     </div>
                     <div className="absolute left-4 opacity-0 group-hover:opacity-100 transition-opacity text-green-600 bg-background p-1.5 rounded-full shadow-neu">
                         <Receipt size={16} />
