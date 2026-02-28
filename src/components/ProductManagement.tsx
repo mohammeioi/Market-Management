@@ -536,14 +536,16 @@ export function ProductManagement() {
                   <button
                     onClick={() => handleToggleAvailability(product.id)}
                     className={`
-                        text-xs font-bold tracking-wider uppercase transition-colors px-2 py-1
-                        ${product.isAvailable !== false ? 'text-green-600 hover:text-green-700' : 'text-gray-400 hover:text-gray-600'}
+                        text-xs font-bold tracking-wider transition-all px-3 py-1.5 rounded-full
+                        ${product.isAvailable !== false
+                        ? 'text-green-600 bg-background shadow-neu-inset hover:bg-green-50/50'
+                        : 'text-gray-400 bg-background shadow-neu hover:shadow-neu-sm'}
                         `}
                   >
                     {product.isAvailable !== false ? 'متوفر' : 'غير متوفر'}
                   </button>
 
-                  <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                  <div className="w-px h-5 bg-gray-200/50 mx-1"></div>
 
                   <button
                     onClick={(e) => { e.stopPropagation(); handleEdit(product); }}

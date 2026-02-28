@@ -198,14 +198,14 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-right">
+          <DialogTitle className="text-right text-xl font-bold pb-2 pr-6">
             {product ? "تعديل المنتج" : "إضافة منتج جديد"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-right block">اسم المنتج</Label>
+            <Label htmlFor="name" className="text-right block text-sm font-semibold mb-1.5 text-foreground/90">اسم المنتج</Label>
             <Input
               id="name"
               value={formData.name}
@@ -217,7 +217,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price" className="text-right block">السعر (د.ع)</Label>
+            <Label htmlFor="price" className="text-right block text-sm font-semibold mb-1.5 text-foreground/90">السعر (د.ع)</Label>
             <Input
               id="price"
               type="number"
@@ -232,9 +232,9 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category" className="text-right block">الفئة</Label>
+            <Label htmlFor="category" className="text-right block text-sm font-semibold mb-1.5 text-foreground/90">الفئة</Label>
             {!isAddingNewCategory ? (
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <Select
                   value={formData.category}
                   onValueChange={(value) => {
@@ -246,7 +246,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                     }
                   }}
                 >
-                  <SelectTrigger className="flex-1 text-right">
+                  <SelectTrigger className="flex-1 text-right h-11 rounded-xl shadow-neu-inset bg-background border-none px-4">
                     <SelectValue placeholder="اختر الفئة" />
                   </SelectTrigger>
                   <SelectContent>
@@ -263,7 +263,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 </Select>
               </div>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <Input
                   id="category"
                   value={newCategoryName}
@@ -275,6 +275,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 <Button
                   type="button"
                   variant="outline"
+                  className="h-11 px-6 rounded-xl shadow-neu bg-background border-none transition-all font-bold"
                   onClick={() => {
                     if (newCategoryName.trim()) {
                       handleInputChange("category", newCategoryName.trim());
@@ -282,18 +283,17 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                     setIsAddingNewCategory(false);
                     setNewCategoryName("");
                   }}
-                  className="px-3"
                 >
                   حفظ
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
+                  className="h-11 px-4 rounded-xl border-none transition-all font-bold"
                   onClick={() => {
                     setIsAddingNewCategory(false);
                     setNewCategoryName("");
                   }}
-                  className="px-3"
                 >
                   إلغاء
                 </Button>
@@ -305,8 +305,8 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="barcode" className="text-right block">الباركود (اختياري)</Label>
-            <div className="flex gap-2">
+            <Label htmlFor="barcode" className="text-right block text-sm font-semibold mb-1.5 text-foreground/90">الباركود (اختياري)</Label>
+            <div className="flex gap-3">
               <Input
                 id="barcode"
                 value={formData.barcode}
@@ -318,7 +318,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
                 type="button"
                 variant="outline"
                 onClick={() => setShowBarcodeScanner(true)}
-                className="px-3"
+                className="h-11 w-11 p-0 flex shrink-0 items-center justify-center rounded-xl shadow-neu bg-background border-none transition-all hover:shadow-neu-pressed"
               >
                 <Camera size={16} />
               </Button>
@@ -326,7 +326,7 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="parent_id" className="text-right block">تنويع لمنتج آخر (اختياري)</Label>
+            <Label htmlFor="parent_id" className="text-right block text-sm font-semibold mb-1.5 text-foreground/90">تنويع لمنتج آخر (اختياري)</Label>
             <div className="relative">
               <Input
                 id="parent_search"
@@ -384,21 +384,22 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="image" className="text-right block">صورة المنتج</Label>
-            <div className="flex gap-2">
+            <Label htmlFor="image" className="text-right block text-sm font-semibold mb-1.5 text-foreground/90">صورة المنتج</Label>
+            <div className="flex gap-3">
               <Input
                 id="image"
                 type="url"
                 value={formData.image}
                 onChange={(e) => handleInputChange("image", e.target.value)}
                 placeholder="رابط الصورة"
-                className="text-right flex-1"
+                className="text-left flex-1"
+                dir="ltr"
               />
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3"
+                className="h-11 w-11 p-0 flex shrink-0 items-center justify-center rounded-xl shadow-neu bg-background border-none transition-all hover:shadow-neu-pressed"
               >
                 <Upload size={16} />
               </Button>
@@ -412,11 +413,11 @@ export function ProductDialog({ open, onOpenChange, product }: ProductDialogProp
             />
           </div>
 
-          <div className="flex gap-2 pt-4">
-            <Button type="submit" className="flex-1">
+          <div className="flex gap-4 pt-6 mt-4">
+            <Button type="submit" className="flex-1 h-11 rounded-xl shadow-neu hover:opacity-90 transition-all font-bold text-base">
               {product ? "تحديث" : "إضافة"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-11 px-8 rounded-xl shadow-neu bg-background border-none transition-all font-bold">
               إلغاء
             </Button>
           </div>
