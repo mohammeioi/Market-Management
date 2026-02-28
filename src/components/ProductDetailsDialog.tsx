@@ -24,17 +24,17 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-[95vw] max-h-[90vh] overflow-y-auto" dir="rtl">
-                    <DialogHeader>
-                        <DialogTitle className="text-right text-xl font-bold">تفاصيل المنتج</DialogTitle>
+                    <DialogHeader className="mb-2">
+                        <DialogTitle className="text-right text-xl font-bold pr-6 pb-2">تفاصيل المنتج</DialogTitle>
                     </DialogHeader>
 
                     <div className="space-y-4 sm:space-y-6">
                         {/* Image */}
-                        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-background border-none shadow-neu-inset group cursor-pointer" onClick={handleImageClick}>
+                        <div className="relative w-full aspect-square sm:aspect-[4/3] rounded-2xl overflow-hidden bg-background border-none shadow-neu-inset group cursor-pointer p-4 sm:p-6 flex items-center justify-center" onClick={handleImageClick}>
                             <img
                                 src={product.image}
                                 alt={product.name}
-                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                className="w-full h-full object-contain mix-blend-multiply transition-transform duration-200 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 flex items-center justify-center">
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -68,39 +68,39 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                <div className="p-3 sm:p-4 bg-background rounded-2xl shadow-neu-inset border-none">
+                                <div className="p-4 bg-background rounded-2xl shadow-neu-inset border-none flex flex-col justify-center">
                                     <div className="text-right">
-                                        <p className="text-xs sm:text-sm text-primary mb-1 font-medium">السعر</p>
-                                        <p className="text-lg sm:text-xl font-bold text-gray-900">{formatCurrency(product.price)}</p>
+                                        <p className="text-sm text-primary mb-2 font-semibold">السعر</p>
+                                        <p className="text-xl sm:text-2xl font-bold text-gray-900">{formatCurrency(product.price)}</p>
                                     </div>
                                 </div>
-                                <div className="p-3 sm:p-4 bg-background rounded-2xl shadow-neu-inset border-none">
-                                    <div className="text-left">
-                                        <p className="text-xs sm:text-sm text-green-600 mb-1 font-medium">المخزون</p>
+                                <div className="p-4 bg-background rounded-2xl shadow-neu-inset border-none flex flex-col justify-center">
+                                    <div className="text-right">
+                                        <p className="text-sm text-green-600 mb-2 font-semibold">المخزون</p>
                                         <div className="flex items-center gap-2 justify-end">
-                                            <Package size={16} className="text-green-600" />
-                                            <span className={`text-base sm:text-lg font-bold ${product.stock > 0 ? 'text-green-900' : 'text-red-600'}`}>
+                                            <span className={`text-xl sm:text-2xl font-bold ${product.stock > 0 ? 'text-green-900' : 'text-red-600'}`}>
                                                 {product.stock}
                                             </span>
+                                            <Package size={20} className="text-green-600 mb-0.5" />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-2 sm:space-y-3">
-                                <p className="font-semibold text-gray-900">الحالة:</p>
-                                <div className="flex gap-2 flex-wrap">
-                                    <Badge className={`px-2 sm:px-3 py-1 text-xs sm:text-sm bg-background shadow-neu-inset border-none ${product.stock > 0 ? "text-green-600" : "text-red-500"}`}>
-                                        {product.stock > 0 ? "✓ متوفر" : "✗ نفذ الكمية"}
+                            <div className="space-y-3 pt-2">
+                                <p className="font-semibold text-gray-900 text-sm">الحالة:</p>
+                                <div className="flex gap-3 flex-wrap">
+                                    <Badge className={`px-4 py-1.5 text-sm rounded-xl bg-background shadow-neu hover:shadow-neu text-center justify-center min-w-24 border-none hover:bg-background transition-all ${product.stock > 0 ? "text-green-600" : "text-red-500"}`}>
+                                        {product.stock > 0 ? "متوفر" : "نفذت الكمية"}
                                     </Badge>
                                     {product.isAvailable === false && (
-                                        <Badge className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-background shadow-neu-inset border-none text-red-500">
-                                            ⚠ غير متاح للبيع
+                                        <Badge className="px-4 py-1.5 text-sm rounded-xl bg-background shadow-neu hover:shadow-neu text-center justify-center min-w-24 border-none hover:bg-background transition-all text-red-500">
+                                            غير متاح
                                         </Badge>
                                     )}
                                     {product.isAvailable !== false && product.stock > 0 && (
-                                        <Badge className="px-2 sm:px-3 py-1 text-xs sm:text-sm bg-background shadow-neu-inset border-none text-green-600">
-                                            ✓ متاح للبيع
+                                        <Badge className="px-4 py-1.5 text-sm rounded-xl bg-background shadow-neu hover:shadow-neu text-center justify-center min-w-24 border-none hover:bg-background transition-all text-green-600">
+                                            متاح للبيع
                                         </Badge>
                                     )}
                                 </div>
@@ -108,9 +108,9 @@ export function ProductDetailsDialog({ open, onOpenChange, product }: ProductDet
 
                             {/* Additional Info */}
                             {product.id && (
-                                <div className="p-2 sm:p-3 bg-background rounded-2xl shadow-neu-inset border-none mt-4">
-                                    <p className="text-xs text-muted-foreground text-right">
-                                        معرف المنتج: <span className="font-mono text-gray-700">{product.id.slice(0, 8)}...</span>
+                                <div className="p-4 bg-background rounded-2xl shadow-neu border-none mt-6">
+                                    <p className="text-xs text-muted-foreground text-center font-medium">
+                                        معرف المنتج: <span className="font-mono text-gray-500 ml-1">{product.id.slice(0, 8)}...</span>
                                     </p>
                                 </div>
                             )}
